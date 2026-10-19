@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+#
+# ctpvclear(1) - clear the lf preview pane
+#
+# Companion to the ctpv shim; see /usr/local/bin/ctpv for details.
+#
+# lf invokes the cleaner as:
+#
+#     ctpvclear <id>
+
+# Move the cursor home and erase the displayed preview area.
+printf '\033[2J\033[H'
+
+exit 0

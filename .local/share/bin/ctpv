@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+#
+# ctpv(1) - preview a file for lf
+#
+# Ubuntu 26.04's coreutils no longer ships Debian's "ctpv", but the lf config
+# in the dotfiles repo expects it:
+#
+#     set previewer ctpv
+#     set cleaner  ctpvclear
+#     &ctpv -s $id
+#     cmd on-quit &ctpvquit $id
+#
+# lf invokes the previewer as:
+#
+#     ctpv <file> <width> <height> <x> <y>
+#
+# and the cleaner as:
+#
+#     ctpvclear <id>
+#
+# This shim implements that interface. Unlike Debian's ctpv it does not keep a
+# persistent background session; the file is rendered on each call, which is
+# what lf expects of a previewer.
+
+set -u
+
+# "-s <id>" starts the (non-existent) persistent session.
+if [ "${1:-}" = "-s" ]; then
+	exit 0
+fi
+
+target="${1:-}"
+[ -n "$target" ] || exit 0
+
+width="${2:-80}"
+height="${3:-40}"
+
+if [ -d "$target" ]; then
+	ls -1 --color=always -- "$target" 2>/dev/null | head -n "$height"
+	exit 0
+fi
+
+if [ ! -r "$target" ]; then
+	echo "[unreadable: $target]"
+	exit 0
+fi
+
+mime=$(file --mime-type -Lb -- "$target" 2>/dev/null || echo "")
+
+case "$mime" in
+text/*|application/json|application/xml|application/javascript|\
+application/x-sh|application/x-empty|application/x-perl|application/x-python)
+	if command -v bat >/dev/null 2>&1; then
+		bat --color=always --style=plain,numbers --paging=never \
+			--terminal-width "$width" -- "$target" 2>/dev/null | head -n "$height"
+	else
+		head -n "$height" -- "$target"
+	fi
+	;;
+image/*)
+	if command -v chafa >/dev/null 2>&1; then
+		chafa --size="${width}x${height}" -- "$target" 2>/dev/null
+	else
+		echo "[image: ${mime}] $(basename -- "$target")"
+	fi
+	;;
+application/pdf)
+	if command -v pdftotext >/dev/null 2>&1; then
+		pdftotext -- "$target" - 2>/dev/null | head -n "$height"
+	else
+		echo "[PDF document] $(basename -- "$target")"
+	fi
+	;;
+application/gzip|application/x-gzip)
+	case "$target" in
+	*.tar.gz|*.tgz) tar tzf "$target" 2>/dev/null | head -n "$height" ;;
+	*.tar.bz2|*.tbz2) tar tjf "$target" 2>/dev/null | head -n "$height" ;;
+	*.tar.xz|*.txz) tar tJf "$target" 2>/dev/null | head -n "$height" ;;
+	*) gzip -dc -- "$target" 2>/dev/null | head -n "$height" ;;
+	esac
+	;;
+application/x-tar|application/x-gtar)
+	tar tf "$target" 2>/dev/null | head -n "$height"
+	;;
+application/zip)
+	if command -v unzip >/dev/null 2>&1; then
+		unzip -l -- "$target" 2>/dev/null | head -n "$height"
+	else
+		echo "[zip archive] $(basename -- "$target")"
+	fi
+	;;
+*)
+	case "$target" in
+	*.tar) tar tf "$target" 2>/dev/null | head -n "$height" ;;
+	*.tar.gz|*.tgz) tar tzf "$target" 2>/dev/null | head -n "$height" ;;
+	*.tar.xz|*.txz) tar tJf "$target" 2>/dev/null | head -n "$height" ;;
+	*.tar.bz2|*.tbz2) tar tjf "$target" 2>/dev/null | head -n "$height" ;;
+	*.gz) gzip -dc -- "$target" 2>/dev/null | head -n "$height" ;;
+	*.zip)
+		if command -v unzip >/dev/null 2>&1; then
+			unzip -l -- "$target" 2>/dev/null | head -n "$height"
+		else
+			echo "[zip archive] $(basename -- "$target")"
+		fi
+		;;
+	*)
+		echo "[${mime:-unknown}] $(basename -- "$target")"
+		;;
+	esac
+	;;
+esac
+
+exit 0

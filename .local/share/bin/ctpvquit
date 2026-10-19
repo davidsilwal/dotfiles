@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# ctpvquit(1) - terminate the lf preview session
+#
+# Companion to the ctpv shim; see /usr/local/bin/ctpv for details.
+#
+# The shim keeps no background session, so there is nothing to tear down.
+
+exit 0
