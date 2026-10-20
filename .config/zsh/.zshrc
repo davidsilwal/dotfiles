@@ -5,9 +5,10 @@
 #  generated outside ~/.cache and ~/.local/state. Every optional tool is
 #  guarded, so a missing binary only removes the feature that used it.
 #
-#  Startup: ~180-230 ms with the four vendored plugins on a loaded host
-#  (fast-syntax-highlighting alone is ~40 ms). The budget is 300 ms; anything
-#  slower belongs in a command, not in this file. Check with:  zsh -ic exit
+#  Startup: ~150-300 ms with the four vendored plugins and the starship prompt
+#  (fast-syntax-highlighting ~40 ms, the prompt ~50 ms) on a host under load.
+#  The gate in setup.sh is 400 ms; anything slower belongs in a command, not
+#  in this file. Check with:  zsh -ic exit
 # =============================================================================
 
 # Nothing below is useful to a script.
