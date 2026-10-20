@@ -1,1 +1,38 @@
-.config/tmux/plugins
+# =============================================================================
+#  dotfiles .gitignore
+#
+#  This repository is checked out with $HOME as its work tree, so the ignore
+#  rules have to cover everything that lands in a home directory. Without
+#  them a plain `dotfiles add .` would try to commit ~2 GB of tool state and
+#  real credentials.
+# =============================================================================
+
+# --- Installed, not committed -------------------------------------------------
+# Plugin directories are fetched by their own managers.
+.config/tmux/plugins/
+.local/share/nvim/
+.local/share/opencode/
+.local/share/opentui/
+.local/share/pi-node/
+
+# --- Credentials --------------------------------------------------------------
+# Never commit these: they contain live tokens and device keys.
+.config/gh/
+.config/opencode/
+.pi/
+.opencode/
+.config/manicode/
+*.auth.json
+hosts.yml
+
+# --- Toolchains and caches ----------------------------------------------------
+.cache/
+.cargo/
+.rustup/
+.npm/
+.nvm/
+.local/state/
+.wget-hsts
+.viminfo
+.vim/
+.zcompdump*

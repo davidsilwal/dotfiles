@@ -1,1 +1,3 @@
-plugins
+# Nothing in the tmux configuration is machine specific except the plugin
+# directory, which is installed by TPM and never committed.
+plugins/

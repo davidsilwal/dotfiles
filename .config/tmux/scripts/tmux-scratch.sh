@@ -1,16 +1,18 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# =============================================================================
+#  tmux-scratch.sh — a scratch pad popup
+#
+#  Runs in its own session so whatever you start there stays alive after the
+#  popup is closed, and comes back the next time you open it.
+# =============================================================================
+set -uo pipefail
 
-# Define session name for scratchpad
-session="_popup_scratchpad"
+session="_scratch"
 
-# Create session if it doesn't exist
-if ! tmux has -t "$session" 2>/dev/null; then
-	session_id="$(tmux new-session -dP -s "$session" -F '#{session_id}')"
-	tmux set-option -s -t "$session_id" key-table popup
-	tmux set-option -s -t "$session_id" status off
-	tmux set-option -s -t "$session_id" prefix None
-	session="$session_id"
+if ! tmux has-session -t "$session" 2>/dev/null; then
+    tmux new-session -d -s "$session" -x 200 -y 50
 fi
 
-# Attach to the scratchpad session inside the popup
-exec tmux attach -t "$session" >/dev/null
+# Clear the screen for a fresh start, then hand the popup over to tmux.
+tmux send-keys -t "$session" clear Enter 2>/dev/null
+exec tmux attach-session -t "$session"
