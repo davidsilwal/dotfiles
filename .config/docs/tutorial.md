@@ -21,7 +21,7 @@ the [README](../README.md).
 
 ## The idea
 
-Four rules decide almost every line in this repository:
+Five rules decide almost every line in this repository:
 
 1. **Nothing is fetched at start-up.** Plugins are cloned by `setup.sh`, the
    init scripts of `starship`, `zoxide` and `fzf` are generated once into
@@ -35,6 +35,10 @@ Four rules decide almost every line in this repository:
 4. **Claims are measured.** Start-up has a 400 ms gate in `setup.sh`, the prompt
    has `prompt-bench`, and both are quoted as medians rather than as the lucky
    sample that looked good.
+5. **Cost paid per prompt belongs in a command.** Whatever the prompt touches is
+   paid on every command you type. Anything that needs a process to answer -- a
+   toolchain version, a container name, a network call -- lives behind a
+   command instead: `versions` is that rule applied to versions.
 
 ## Boot sequence
 
@@ -189,9 +193,13 @@ $ versions
 ```
 
 `versions` reads the same manifests the badges match on, so it answers what the
-prompt used to say, for the price of one command. Adding `$version` back to one
-module is the other option: the badge that matters to you, paid for on purpose.
-`prompt-bench --fixture` then shows the bill instead of hiding it.
+prompt used to say, for the price of one command: `versions <dir>` for elsewhere,
+`versions --all` for everything installed. A missing toolchain prints
+`(not installed)` and the exit status stays 0 -- it is a report, not a check.
+
+Adding `$version` back to one module is the other option: the badge that
+matters to you, paid for on purpose. `prompt-bench --fixture` then shows the
+bill instead of hiding it.
 
 ### What is left
 
@@ -278,9 +286,12 @@ for i in 1 2 3; do /usr/bin/time -f '%e s' zsh -ic exit; done
 Anything that costs more than a few milliseconds belongs behind a key binding,
 not in `.zshrc`.
 
-**Another language badge** -- add the module to the `format` string and give it
-`detect_files`. Do not re-enable `detect_extensions`; that is the tree walk
-this configuration removed.
+**Another language badge** -- add the module to the `format` string, give it
+`detect_files`, and add the matching row to `zsh/scripts/versions.sh` so
+`versions` reports its version. Keep two things out of the format: `$version`
+(starts the runtime) and `$style` as the style of a group (same cost, see
+[Why the badges print no version](#why-the-badges-print-no-version)). Do not
+re-enable `detect_extensions`; that is the tree walk this configuration removed.
 
 **A tmux binding** -- add it to `tmux/tmux.conf`, `prefix + r`, then test it.
 `tmux list-keys | grep <key>` proves it took.
@@ -305,6 +316,13 @@ only part a config change can affect. `p90` is the tail you notice; a `p90`
 more than 4x the median means the machine is busy and both figures are
 pessimistic.
 
+That is why the automated gate uses `--max-cost=30` and not the 60 ms median:
+load moves both numbers, the difference stays put.
+
+`prompt-bench` needs bash 5.0+ for `EPOCHREALTIME` -- it exits 2 and says so on
+older shells. On macOS, where `/bin/bash` is 3.2, run it with Homebrew's bash;
+`setup.sh` and `versions` work with the system one.
+
 For start-up, `setup.sh --check` takes the best of three runs against a 400 ms
 budget -- the minimum is the fair statistic on a machine with other work
 running.
@@ -322,9 +340,13 @@ Each one is a small experiment with an observable result. Run
    ~/.config/zsh/plugins/fzf-tab.off`, start a shell: it still works, Tab falls
    back to zsh's own menu. Move it back.
 
-3. **Watch a prompt get slower.** In a scratch directory add `go.mod` (with
-   `go` installed, or a stub `go` on `PATH`), run `prompt-bench` there, then
-   `rm go.mod` and run it again. The difference is the version probe.
+3. **Watch a prompt get slower -- on purpose.** Run `prompt-bench --fixture`,
+   then add `$version` to the rust module in `starship.toml`
+   (`format = '[$symbol $version](fg:crust bg:green)'`) and run it again: the
+   badge now starts `rustc` on every prompt and the config cost goes from
+   ~15 ms to ~33 ms. Do the same for `nodejs` in a directory with
+   `package.json` and it goes from ~0 to ~80 ms, because node is slower to
+   start. Revert both; this is the measurement that removed the versions.
 
 4. **Break the prompt on purpose.** Change the `green` entry in
    `[palettes.catppuccin_mocha]` to `#ff00ff` and open a new prompt (no restart

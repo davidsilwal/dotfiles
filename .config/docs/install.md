@@ -28,8 +28,7 @@ If the config is already installed and you only want to update or reset it, see
 | `curl` | to download the Nerd Font when it is missing |
 | network | packages, plugins, font |
 | `unzip` **or** `python3` | to unpack the font archive (either one is enough) |
-| `bash` 3.2+ | `setup.sh` and `versions` need nothing newer |
-| `bash` 5.0+ for `prompt-bench` | it times with `EPOCHREALTIME`; macOS ships 3.2 as `/bin/bash`, so `brew install bash` if you want to measure |
+| `bash` 3.2+ (5.0+ for `prompt-bench`) | `setup.sh` and `versions` need nothing newer; `prompt-bench` times with `EPOCHREALTIME`, and macOS still ships 3.2 as `/bin/bash`, so `brew install bash` if you want to measure |
 
 zsh, tmux, fzf, fd, bat, eza, ripgrep, zoxide, neovim and starship are
 installed by the script; you do not need them beforehand. On Debian and
@@ -61,7 +60,8 @@ git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" checkout
 The checkout puts these in place:
 
 ```
-~/.config/zsh/{.zshenv,.zshrc,starship.toml,scripts/prompt-bench.sh}
+~/.config/zsh/{.zshenv,.zshrc,starship.toml}
+~/.config/zsh/scripts/{prompt-bench.sh,versions.sh}
 ~/.config/tmux/tmux.conf
 ~/.config/.fresh/          pristine baseline for setup.sh --fresh
 ~/.config/setup.sh
@@ -107,7 +107,7 @@ It runs these steps in order and is safe to run again at any time:
 | zsh plugins | shallow-clones four plugins into `~/.config/zsh/plugins/` |
 | tmux plugin | shallow-clones `tmux-resurrect` into `~/.config/tmux/plugins/` |
 | ZDOTDIR | checks that `/etc/zsh/zshenv` points zsh at `$XDG_CONFIG_HOME/zsh` |
-| Verification | syntax, silent start-up, `ZDOTDIR`, start-up budget, tmux config parse, tools, font, plugins, shellcheck |
+| Verification | syntax, silent start-up, `ZDOTDIR`, start-up budget, tmux config parse, tools, font, plugins, prompt cost, shellcheck |
 
 A full run takes a couple of minutes on a fresh machine, almost all of it in
 the package manager.
@@ -180,6 +180,7 @@ that matter:
 ✓ starship
 ✓ font: JetBrainsMono Nerd Font
 ✓ plugin: zsh-autosuggestions
+✓ prompt: median 2x ms, xx ms over the spawn floor
 ```
 
 Warnings (`!`) are for optional pieces -- a missing `eza` or `nvim` removes a
@@ -212,7 +213,23 @@ compiling. A badge that starts a runtime adds ~70 ms to the config alone, which
 is what it is there to catch.
 
 The badges do not print toolchain versions -- that costs a runtime spawn on
-every prompt. `versions` prints them for the current directory on demand.
+every prompt. `versions` prints them for the directory you are in, reading the
+same manifests the badges match on:
+
+```bash
+versions              # this directory
+versions ~/code/api   # or any other
+versions --all        # every toolchain it can find, manifest or not
+```
+
+```
+  node     v22.22.1
+  rust     1.99.1 (58cf8f9c3 2026-10-13)
+  python   3.14.4
+```
+
+A toolchain that is not installed is reported as `(not installed)` rather than
+failing the command; the exit status stays 0.
 
 And tmux:
 
@@ -267,7 +284,7 @@ current directory and you do not want `~/.config/.config/zsh`:
 
 ```bash
 cd ~
-dotfiles checkout -- .config/zsh      # branch's config back, prompt-bench included
+dotfiles checkout -- .config/zsh      # branch's config back, both scripts included
 ~/.config/setup.sh                    # clone the plugins again, then verify
 ```
 
