@@ -2,7 +2,7 @@
 
 format = """
 [](red)\
-$os\
+[ ](bg:red fg:crust)\
 $username\
 [](bg:peach fg:red)\
 $directory\
@@ -31,17 +31,12 @@ $character"""
 
 palette = 'catppuccin_mocha'
 
+# The os module costs ~50 ms here (it probes the distribution on every
+# prompt) for a single static icon, so the glyph is written into the format
+# instead. U+F17C is the generic Linux mark, correct on both Arch and Ubuntu;
+# swap it for U+F0548 if you would rather see the Ubuntu logo.
 [os]
-disabled = false
-style = "bg:red fg:crust"
-
-[os.symbols]
-Windows = " "
-Ubuntu = "󰕈 "
-SUSE = " "
-Raspbian = "󰐿 "
-Mint = "󰣭 "
-Macos = "󰀵 "
+disabled = true
 Manjaro = " "
 Linux = "󰌽 "
 Gentoo = "󰣨 "
