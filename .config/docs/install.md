@@ -212,6 +212,12 @@ raises both numbers, and the check should not fail because something else is
 compiling. A badge that starts a runtime adds ~70 ms to the config alone, which
 is what it is there to catch.
 
+The check does not rely on the stopwatch alone. It also renders the prompt in
+that fixture with every language runtime shadowed by a shim that records its own
+execution, and fails if the log is not empty. That catches a 7 ms `python3
+--version` the timing budget would never notice, and machine load cannot affect
+the verdict: `✓ prompt starts no runtime (6 shadowed)`.
+
 The badges do not print toolchain versions -- that costs a runtime spawn on
 every prompt. `versions` prints them for the directory you are in, reading the
 same manifests the badges match on:

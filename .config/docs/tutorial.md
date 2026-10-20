@@ -319,6 +319,12 @@ pessimistic.
 That is why the automated gate uses `--max-cost=30` and not the 60 ms median:
 load moves both numbers, the difference stays put.
 
+The timing gate is a budget, not a proof, so `setup.sh --check` carries a second
+one that is deterministic: it renders the prompt in the fixture with every
+runtime shadowed by a shim that logs its own execution, and fails if the log has
+anything in it. Timing can miss a 7 ms `python3 --version`; a shim cannot, and
+no amount of machine load changes the answer.
+
 `prompt-bench` needs bash 5.0+ for `EPOCHREALTIME` -- it exits 2 and says so on
 older shells. On macOS, where `/bin/bash` is 3.2, run it with Homebrew's bash;
 `setup.sh` and `versions` work with the system one.

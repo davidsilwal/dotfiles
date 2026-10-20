@@ -545,6 +545,42 @@ verify() {
         done
     fi
 
+    # The timing above is a budget, not a proof: a slow machine can fail it
+    # without a regression, and a 7 ms `python --version` can pass it with one.
+    # This is the deterministic half. Every language runtime is shadowed by a
+    # shim that records its own execution, the prompt is rendered in a
+    # directory holding all the manifests, and the check fails if the log is
+    # not empty. No timing involved, so load cannot affect the verdict.
+    if command -v starship >/dev/null 2>&1; then
+        _shim_dir=$(mktemp -d "${TMPDIR:-/tmp}/zs-shim.XXXXXX")
+        _shim_log="$_shim_dir/calls.log"
+        _shim_fx=$(mktemp -d "${TMPDIR:-/tmp}/zs-manifests.XXXXXX")
+        : >"$_shim_log"
+        _armed=0
+        for _rt in node bun rustc cargo go php java kotlinc ghc python python3 cc gcc clang; do
+            _real=$(command -v "$_rt" 2>/dev/null) || continue
+            printf '#!/bin/sh\nprintf "%%s\\n" %s >> %s\nexec %s "$@"\n' \
+                "$_rt" "$_shim_log" "$_real" >"$_shim_dir/$_rt"
+            chmod +x "$_shim_dir/$_rt"
+            _armed=$(( _armed + 1 ))
+        done
+        for _m in package.json bun.lockb Cargo.toml go.mod composer.json pom.xml \
+                  build.gradle.kts stack.yaml pyproject.toml CMakeLists.txt; do
+            : >"$_shim_fx/$_m"
+        done
+        ( cd "$_shim_fx" &&
+          PATH="$_shim_dir:$PATH" STARSHIP_CONFIG="$ZSH_DIR/starship.toml" \
+              starship prompt >/dev/null 2>&1 )
+        if [ -s "$_shim_log" ]; then
+            failed=1
+            err "prompt starts a language runtime (should print the badge only):"
+            sort -u "$_shim_log" | sed 's/^/      /' >&2
+        else
+            ok "prompt starts no runtime ($_armed shadowed)"
+        fi
+        rm -rf "$_shim_dir" "$_shim_fx"
+    fi
+
     if command -v shellcheck >/dev/null 2>&1; then
         if out=$(shellcheck -S warning "$CONFIG_HOME/setup.sh" 2>&1); then
             ok "shellcheck setup.sh"
