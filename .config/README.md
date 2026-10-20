@@ -50,6 +50,12 @@ compiled, and nothing runs at start-up to fetch anything.
 `tmux` is only requested when the installed one is older than 3.2; a newer
 build (as `/usr/local/bin/tmux` here) is left alone.
 
+**Nerd Font.** The prompt separators, the fzf previews and the tmux bar need a
+patched font. `setup.sh` checks `fc-list` for `JetBrainsMono Nerd Font` and,
+only when it is absent, downloads the release archive into
+`~/.local/share/fonts` and runs `fc-cache`. `unzip` is used when present,
+otherwise python3's `zipfile` module — no extra package is required.
+
 On Debian and Ubuntu, `fd` and `bat` are installed as `fdfind` and `batcat`,
 so `setup.sh` also creates:
 
@@ -78,13 +84,13 @@ in as a plugin. The tmux status bar, the fzf finder and the fzf-tab menu use
 the same hex values, and the prompt is `starship` on the
 `catppuccin-powerline` preset from `zsh/starship.toml`. `.zshenv` exports
 `STARSHIP_CONFIG` so that file lives with the rest of the shell config and
-survives `--fresh`. Only the prompt's powerline separators need a Nerd Font.
+survives `--fresh`. The prompt's powerline separators need a Nerd Font, which
+`setup.sh` installs when fontconfig cannot already resolve it.
 
-Deliberately **not** installed: fonts and terminal colour schemes (the font is
-installed on this host already; the palette lives in the terminal's own
-config), TPM, tmux-continuum (its autosave needs TPM's environment and
-auto-restore tends to resurrect sessions you meant to drop), and any plugin
-manager.
+Deliberately **not** installed: terminal colour schemes (the palette lives in
+the terminal's own config), TPM, tmux-continuum (its autosave needs TPM's
+environment and auto-restore tends to resurrect sessions you meant to drop),
+and any plugin manager.
 
 ## Fresh install
 

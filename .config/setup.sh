@@ -161,6 +161,60 @@ fix_debian_binaries() {
     done
 }
 
+# --- Nerd Font ----------------------------------------------------------------
+# The prompt separators, fzf previews and the tmux bar assume a patched font.
+# Only fetched when fontconfig cannot resolve the family, so a host that already
+# has it (system-wide or per user) downloads nothing.
+NERD_FONT_URL='https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.zip'
+NERD_FONT_FAMILY='JetBrainsMono Nerd Font'
+FONT_DIR="$HOME/.local/share/fonts"
+
+install_fonts() {
+    step "Nerd Font"
+    # `grep -c` reads the whole stream: `grep -q` exits early, and under
+    # `set -o pipefail` the resulting SIGPIPE makes the pipeline look failed
+    # even when the family is there.
+    if command -v fc-list >/dev/null 2>&1 &&
+       [ "$(fc-list 2>/dev/null | grep -c "$NERD_FONT_FAMILY")" -gt 0 ]; then
+        ok "$NERD_FONT_FAMILY already installed"
+        return 0
+    fi
+
+    local missing=''
+    for b in curl fc-cache; do
+        command -v "$b" >/dev/null 2>&1 || missing="$missing $b"
+    done
+    if [ -n "$missing" ]; then
+        warn "cannot install the font, missing:$missing"
+        return 0
+    fi
+    # `unzip` is the fast path; python3 is present far more often than unzip
+    # on minimal images, and its zipfile module needs no extra package.
+    if command -v unzip >/dev/null 2>&1; then
+        extract() { unzip -q "$1" -d "$2" ; }
+    elif command -v python3 >/dev/null 2>&1; then
+        extract() { python3 -m zipfile -e "$1" "$2" ; }
+    else
+        warn "cannot install the font, need unzip or python3"
+        return 0
+    fi
+
+    local tmp
+    tmp=$(mktemp -d) || { warn "mktemp failed"; return 0; }
+    if curl -fsSL "$NERD_FONT_URL" -o "$tmp/font.zip" &&
+       extract "$tmp/font.zip" "$tmp" &&
+       mkdir -p "$FONT_DIR" &&
+       find "$tmp" -name '*.ttf' -exec cp -f {} "$FONT_DIR/" \; ; then
+        fc-cache -f "$FONT_DIR" >/dev/null 2>&1
+        rm -rf "$tmp"
+        ok "$NERD_FONT_FAMILY -> ${FONT_DIR/#$HOME/~}"
+    else
+        rm -rf "$tmp"
+        warn "could not install $NERD_FONT_FAMILY (no network?)"
+    fi
+    return 0
+}
+
 # --- zsh plugins --------------------------------------------------------------
 # Vendored, not managed: two shallow clones, no updater and no version
 # pinning. The shell sources them only if the checkout is present.
@@ -425,6 +479,15 @@ verify() {
         if command -v "$b" >/dev/null 2>&1; then ok "$b"; else warn "$b missing"; fi
     done
 
+    # Presence is not enough: an unpatched monospace family resolves fine but
+    # draws the prompt separators as boxes. Count matches rather than `grep -q`,
+    # which would trip over SIGPIPE under `set -o pipefail`.
+    if [ "$(fc-list 2>/dev/null | grep -c "$NERD_FONT_FAMILY")" -gt 0 ]; then
+        ok "font: $NERD_FONT_FAMILY"
+    else
+        warn "font: $NERD_FONT_FAMILY missing (run: $0)"
+    fi
+
     # Plugins are optional at runtime, so a missing checkout is a warning.
     local spec name entry
     for spec in "${ZSH_PLUGINS[@]}"; do
@@ -518,6 +581,7 @@ if [ "$CHECK_ONLY" -eq 0 ]; then
     else
         info "skipped (--no-packages)"
     fi
+    install_fonts
     install_plugins || status=1
     install_tmux_plugins || status=1
 fi

@@ -40,5 +40,6 @@ here as well.
   them on every start costs ~70 ms. Delete the directory to force a rebuild.
 - Optional tools (`starship`, `fzf`, `zoxide`, `eza`) are guarded; a missing
   binary removes its feature and nothing else.
-- ASCII only in the status bar, so a Nerd Font is a preference, not a
-  requirement.
+- The tmux status bar is ASCII only, but the prompt's powerline separators and
+  the fzf previews need a Nerd Font; `setup.sh` installs it when fontconfig
+  cannot resolve `JetBrainsMono Nerd Font`.
