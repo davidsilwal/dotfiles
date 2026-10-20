@@ -4,7 +4,6 @@
 
 These are my dotfiles for use on arch and ubuntu based linux distributions. My setup includes:
 
-- qtile ([submodule](https://github.com/radleylewis/qtile))
 - neovim ([submodule](https://github.com/radleylewis/nvim))
 - zsh ([`~/.config/zsh`](./.config/zsh), installed by [`setup.sh`](./.config/setup.sh))
 - tmux ([`~/.config/tmux`](./.config/tmux), no TPM)
@@ -50,7 +49,7 @@ dotfiles checkout
 cd ~/.config/nvim
 ```
 
-Clone the nvim and qtile submodules, which may not happen automatically.
+Clone the nvim submodule, which may not happen automatically.
 
 ```bash
 dotfiles submodule update
