@@ -1,0 +1,221 @@
+#!/bin/bash
+# ============================================================
+#  FINAL VERIFICATION
+# ============================================================
+FAIL=0
+ok()   { printf "  \033[32mPASS\033[0m  %s\n" "$1"; }
+bad()  { printf "  \033[31mFAIL\033[0m  %s\n         -> %s\n" "$1" "$2"; FAIL=$((FAIL+1)); }
+chk()  { if "$@" >/dev/null 2>&1; then ok "$*"; else bad "$*" "command failed"; fi; }
+
+echo "== 1. SHELL =="
+[ "$(getent passwd root | cut -d: -f7)" = "/usr/bin/zsh" ] && ok "root's default shell is zsh" || bad "default shell" "$(getent passwd root|cut -d: -f7)"
+chk zsh --version
+[ -r /root/.config/zsh/.zshrc ] && ok "repo .zshrc in place" || bad ".zshrc" "missing"
+[ -r /root/.zshenv ] && ok "~/.zshenv fallback in place" || bad "~/.zshenv" "missing"
+[ -d /root/.local/state/zsh ] && ok "history dir exists" || bad "history dir" "missing"
+[ -f /root/.cache/zsh/zcompdump ] && ok "compinit cache built" || bad "zcompdump" "missing"
+
+echo
+echo "== 2. NO STARTUP ERRORS =="
+ERR=$(timeout 60 script -qec 'zsh -ic "true"' /dev/null 2>&1 | grep -viE 'zle|^\s*$|^\[')
+if [ -z "$ERR" ]; then ok "interactive zsh starts with zero errors/warnings"; else bad "startup output" "$ERR"; fi
+ERR2=$(timeout 60 script -qec 'zsh -lc "true"' /dev/null 2>&1 | grep -viE 'zle|^\s*$|^\[')
+if [ -z "$ERR2" ]; then ok "login zsh starts with zero errors/warnings"; else bad "login startup" "$ERR2"; fi
+
+echo
+echo "== 3. TOOLS =="
+export PATH="/root/.local/bin:$PATH"
+for t in zsh eza bat fd fzf rg lf nvim zoxide starship trash-put file tar; do
+  command -v $t >/dev/null 2>&1 && ok "$t -> $(command -v $t)" || bad "$t" "not installed"
+done
+for s in ctpv ctpvclear ctpvquit; do
+  [ -x "/usr/local/bin/$s" ] && ok "$s (lf previewer shim)" || bad "$s" "missing"
+done
+
+echo
+echo "== 4. CONFIG FILES =="
+for f in /root/.config/zsh/.zshenv /root/.config/zsh/.zshrc /root/.config/zsh/aliases.zsh \
+         /root/.config/zsh/bindings.zsh /root/.config/zsh/fzf.zsh /root/.config/zsh/plugins.zsh \
+         /root/.config/zsh/prompt.zsh /root/.config/zsh/starship.toml /root/.config/zsh/local.zsh \
+         /root/.config/lf/lfrc /root/.config/alacritty/alacritty.toml \
+         /root/.config/tmux/tmux.conf /root/.config/rofi/config.rasi /root/.config/kanshi/config; do
+  [ -r "$f" ] && ok "$f" || bad "$f" "missing"
+done
+
+echo
+echo "== 5. DOTFILES REPO =="
+G=/root/.dotfiles
+[ -d $G ] && ok "bare repo at ~/.dotfiles" || bad "~/.dotfiles" "missing"
+[ "$(git --git-dir=$G --work-tree=/root status --porcelain | wc -l)" = "0" ] && ok "worktree CLEAN" || bad "worktree" "$(git --git-dir=$G --work-tree=/root status --porcelain)"
+[ "$(git --git-dir=$G --work-tree=/root submodule status | grep -c '^[+-]')" = "0" ] && ok "all submodules at pinned commits" || bad "submodules" "$(git --git-dir=$G --work-tree=/root submodule status)"
+git --git-dir=$G --work-tree=/root ls-files | grep -q '^\.config/zsh$' && ok "zsh submodule tracked" || bad "zsh submodule" "not tracked"
+
+echo
+echo "== 6. SYNTAX =="
+for f in /usr/local/bin/ctpv /usr/local/bin/ctpvclear /usr/local/bin/ctpvquit \
+         /root/.config/tmux/scripts/*.sh /root/.local/share/bin/*.sh; do
+  bash -n "$f" 2>/dev/null && ok "bash -n $(basename $f)" || bad "$f" "syntax error"
+done
+for f in /root/.config/rofi/scripts/*.py /root/.config/qtile/*.py; do
+  python3 -m py_compile "$f" 2>/dev/null && ok "py $(basename $f)" || bad "$f" "syntax error"
+done
+python3 -c "import tomllib; [tomllib.load(open(p,'rb')) for p in ['/root/.config/alacritty/alacritty.toml','/root/.config/zsh/starship.toml']]" 2>/dev/null && ok "TOML configs parse (alacritty, starship)" || bad "TOML" "parse error"
+# kanshi uses its own brace DSL, mako/zhli use INI-style key=value
+python3 - <<'PY' 2>/dev/null && ok "kanshi/mako/zhli configs well-formed" || bad "kanshi/mako/zhli" "malformed"
+import re, sys
+# kanshi: brace DSL
+k = open('/root/.config/kanshi/config').read()
+assert k.count('{') == k.count('}'), "kanshi braces unbalanced"
+assert re.search(r'profile\s+\S+\s*\{', k), "kanshi has no profile block"
+# mako / zhli: flat key=value files, no section headers
+for p in ['/root/.config/mako/config', '/root/.config/zhli/config']:
+    bad_lines = []
+    for i, line in enumerate(open(p), 1):
+        s = line.strip()
+        if not s or s.startswith('#'):
+            continue
+        if '=' not in s:
+            bad_lines.append((i, s))
+    assert not bad_lines, f"{p} has non key=value lines: {bad_lines}"
+PY
+
+echo
+echo "== 7. ZSH FEATURES =="
+OUT=$(timeout 60 script -qec 'zsh -ic "zle -l"' /dev/null 2>/dev/null | tr " " "\n")
+for w in autosuggest-toggle history-substring-search-up history-substring-search-down _fzf_file_no_hidden fzf-history-widget; do
+  echo "$OUT" | grep -qx "$w" && ok "widget $w" || bad "widget $w" "missing"
+done
+OUT=$(timeout 60 script -qec 'zsh -ic "bindkey -M viins \"^R\""' /dev/null 2>/dev/null | tail -1)
+echo "$OUT" | grep -q 'fzf-history-widget' && ok "Ctrl+R -> fzf-history-widget (viins)" || bad "Ctrl+R" "$OUT"
+OUT=$(timeout 60 script -qec 'zsh -ic "alias dotfiles"' /dev/null 2>/dev/null | tail -1)
+echo "$OUT" | grep -q '.dotfiles' && ok "dotfiles alias" || bad "dotfiles alias" "$OUT"
+
+echo
+echo "== 8. PLUGINS =="
+for p in fast-syntax-highlighting zsh-autosuggestions zsh-history-substring-search zsh-vi-mode; do
+  [ -d "/root/.config/zsh/plugins/$p" ] && ok "zsh plugin $p" || bad "plugin $p" "missing"
+done
+[ "$(ls /root/.local/share/nvim/lazy 2>/dev/null | wc -l)" -gt 30 ] && ok "nvim plugins installed ($(ls /root/.local/share/nvim/lazy|wc -l))" || bad "nvim plugins" "too few"
+[ -d /root/.tmux/plugins/tpm ] && ok "TPM installed" || bad "TPM" "missing"
+[ -r /root/.tmux/plugins/tmux/catppuccin.tmux ] && ok "catppuccin tmux theme" || bad "catppuccin" "missing"
+
+echo
+echo "== 9. FORKS ON GITHUB =="
+for r in dotfiles nvim zsh; do
+  gh repo view "davidsilwal/$r" --json name >/dev/null 2>&1 && ok "fork davidsilwal/$r exists" || bad "fork $r" "missing"
+done
+REMOTE_SHA=$(git ls-remote https://github.com/davidsilwal/zsh.git refs/heads/main 2>/dev/null | cut -f1)
+LOCAL_SHA=$(git -C /root/.dotfiles/modules/.config/zsh rev-parse HEAD)
+[ "$REMOTE_SHA" = "$LOCAL_SHA" ] && ok "zsh fork matches local ($LOCAL_SHA)" || bad "zsh fork" "remote=$REMOTE_SHA local=$LOCAL_SHA"
+REMOTE_SHA=$(git ls-remote https://github.com/davidsilwal/nvim.git refs/heads/master 2>/dev/null | cut -f1)
+LOCAL_SHA=$(git -C /root/.dotfiles/modules/.config/nvim rev-parse HEAD)
+[ "$REMOTE_SHA" = "$LOCAL_SHA" ] && ok "nvim fork matches local ($LOCAL_SHA)" || bad "nvim fork" "remote=$REMOTE_SHA local=$LOCAL_SHA"
+REMOTE_SHA=$(git ls-remote https://github.com/davidsilwal/dotfiles.git refs/heads/master 2>/dev/null | cut -f1)
+LOCAL_SHA=$(git --git-dir=/root/.dotfiles rev-parse master)
+[ "$REMOTE_SHA" = "$LOCAL_SHA" ] && ok "dotfiles fork matches local ($LOCAL_SHA)" || bad "dotfiles fork" "remote=$REMOTE_SHA local=$LOCAL_SHA"
+
+echo
+echo "== 10. SHELL MIGRATION (bash -> zsh) =="
+# zsh is the only interactive shell
+[ "$(getent passwd root | cut -d: -f7)" = "/usr/bin/zsh" ] && ok "root's login shell is zsh" || bad "login shell" "not zsh"
+OUT=$(timeout 40 script -qec 'bash -i' /dev/null 2>&1 | tr -d '\000')
+echo "$OUT" | grep -qE '❯|󰕈' && ok "interactive bash hands off to zsh" || bad "bash handoff" "no zsh prompt"
+OUT=$(timeout 40 script -qec 'bash -l' /dev/null 2>&1 | tr -d '\000')
+echo "$OUT" | grep -qE '❯|󰕈' && ok "login bash hands off to zsh" || bad "login bash handoff" "no zsh prompt"
+timeout 20 bash -c 'echo bash_ok' >/dev/null 2>&1 && ok "non-interactive bash still works (scripts safe)" || bad "bash -c" "broken"
+printf '#!/bin/bash\necho shebang_ok\n' > /tmp/opencode/sb.sh
+chmod +x /tmp/opencode/sb.sh
+/tmp/opencode/sb.sh 2>/dev/null | grep -q shebang_ok && ok "#!/bin/bash scripts unaffected" || bad "shebang scripts" "broken"
+rm -f /tmp/opencode/sb.sh
+
+# pi + opencode on PATH in a clean login zsh
+for b in opencode pi opencode2; do
+  env -i HOME=/root TERM=xterm zsh -l -c "command -v $b" >/dev/null 2>&1 \
+    && ok "$b on PATH in clean login zsh" || bad "$b on PATH" "missing"
+done
+timeout 60 zsh -lc 'opencode --version' 2>&1 | grep -q 'opencode v' && ok "opencode runs under zsh" || bad "opencode" "does not run"
+timeout 60 zsh -lc 'pi --help' 2>&1 | grep -qi 'pi - AI coding assistant' && ok "pi runs under zsh" || bad "pi" "does not run"
+
+# migrated aliases
+for a in l fgrep egrep; do
+  timeout 40 script -qec "zsh -ic 'alias $a'" /dev/null 2>/dev/null | grep -q "$a=" && ok "migrated alias: $a" || bad "alias $a" "missing"
+done
+# lesspipe + LS_COLORS
+env -i HOME=/root TERM=xterm zsh -l -c 'echo $LESSOPEN' 2>/dev/null | grep -q lesspipe && ok "lesspipe (LESSOPEN) migrated" || bad "LESSOPEN" "missing"
+timeout 40 script -qec 'zsh -ic "echo x=\${#LS_COLORS}"' /dev/null 2>/dev/null | grep -qE 'x=[0-9]{3,}' && ok "LS_COLORS (dircolors) migrated" || bad "LS_COLORS" "missing"
+
+# bash config is now just a hand-off stub
+grep -q 'exec /usr/bin/zsh' /root/.bashrc && ok "~/.bashrc is a hand-off stub" || bad "~/.bashrc" "not migrated"
+grep -q 'pi/agent/bin' /etc/zsh/zshenv && ok "pi PATH in /etc/zsh/zshenv" || bad "zshenv" "missing pi"
+grep -q 'opencode/bin' /etc/zsh/zshenv && ok "opencode PATH in /etc/zsh/zshenv" || bad "zshenv" "missing opencode"
+S=$(env -i HOME=/root TERM=xterm zsh -l -c 'echo $SHELL' 2>/dev/null)
+[ "$S" = "/usr/bin/zsh" ] && ok "\$SHELL reports zsh in a clean login" || bad "\$SHELL" "$S"
+S=$(env -i HOME=/root TERM=xterm SHELL=/bin/bash zsh -l -c 'echo $SHELL' 2>/dev/null)
+[ "$S" = "/usr/bin/zsh" ] && ok "stale \$SHELL=/bin/bash corrected" || bad "stale \$SHELL" "$S"
+
+echo
+echo "== 11. TMUX MODULE STRUCTURE =="
+for f in tmux.conf options.conf plugins.conf theme.conf layout.conf keys.conf; do
+  [ -r "/root/.config/tmux/$f" ] && ok "tmux module: $f" || bad "tmux module $f" "missing"
+done
+[ -r /root/.tmux.conf ] && ok "~/.tmux.conf loader present" || bad "~/.tmux.conf" "missing"
+grep -q 'source-file ~/.config/tmux/tmux.conf' /root/.tmux.conf && ok "loader sources the XDG config" || bad "loader" "wrong target"
+# A scratch repo inside the worktree is tolerated, but its content must match
+# what the canonical dotfiles repo tracks - otherwise work is being lost.
+if [ -d /root/.config/tmux/.git ]; then
+  ok "scratch repo present in .config/tmux (tolerated)"
+  SYNC=1
+  for f in tmux.conf options.conf plugins.conf theme.conf layout.conf keys.conf README.md .gitignore; do
+    a=$(git -C /root/.config/tmux show HEAD:$f 2>/dev/null | md5sum | cut -d' ' -f1)
+    b=$(git --git-dir=/root/.dotfiles show master:.config/tmux/$f 2>/dev/null | md5sum | cut -d' ' -f1)
+    [ "$a" = "$b" ] || { echo "         -> $f differs from the dotfiles repo"; SYNC=0; }
+  done
+  [ "$SYNC" = "1" ] && ok "scratch repo content == dotfiles repo content" || bad "scratch repo drift" "differs"
+else
+  ok "no scratch repo in .config/tmux"
+fi
+# every declared plugin installed
+for p in tpm tmux-sensible tmux-resurrect tmux-continuum tmux-yank tmux-urlview tmux-fzf vim-tmux-navigator tmux-fingers tmux; do
+  [ -d "/root/.tmux/plugins/$p" ] && ok "tmux plugin: $p" || bad "tmux plugin $p" "missing"
+done
+# extended-keys must be set in the config, not just the live server
+grep -q 'set -g extended-keys on' /root/.config/tmux/options.conf && ok "extended-keys on in config" || bad "extended-keys" "not in config"
+grep -q 'extended-keys-format csi-u' /root/.config/tmux/options.conf && ok "extended-keys-format csi-u in config" || bad "extended-keys-format" "not in config"
+# fresh server must pick them up
+tmux -L vscratch kill-server 2>/dev/null
+tmux -L vscratch -f /root/.tmux.conf new-session -d -s v 2>/dev/null
+sleep 1
+[ "$(tmux -L vscratch show-options -g extended-keys 2>/dev/null | awk '{print $2}')" = "on" ] && ok "fresh server: extended-keys on" || bad "fresh server extended-keys" "not on"
+[ "$(tmux -L vscratch show-options -g extended-keys-format 2>/dev/null | awk '{print $2}')" = "csi-u" ] && ok "fresh server: csi-u" || bad "fresh server format" "not csi-u"
+tmux -L vscratch kill-server 2>/dev/null
+
+echo
+echo "== 12. TOOLING ADDED SINCE =="
+chk lf --version
+[ -x /root/.config/terminal-theme/install.sh ] && ok "terminal-theme/install.sh" || bad "install.sh" "missing"
+bash -n /root/.config/terminal-theme/install.sh 2>/dev/null && ok "install.sh syntax" || bad "install.sh" "syntax error"
+[ -r /root/.config/systemd/user/tmux.service ] && ok "systemd tmux.service" || bad "tmux.service" "missing"
+systemctl --user is-enabled tmux.service >/dev/null 2>&1 && ok "tmux.service enabled" || bad "tmux.service" "not enabled"
+[ -d /usr/local/share/fonts/jetbrains-mono-nerd ] && ok "JetBrainsMono Nerd Font installed" || bad "Nerd Font" "missing"
+env -i HOME=/root TERM=xterm zsh -l -c 'command -v cargo' >/dev/null 2>&1 && ok "cargo on PATH in clean login zsh" || bad "cargo" "not on PATH"
+env -i HOME=/root TERM=xterm zsh -l -c 'command -v rustc' >/dev/null 2>&1 && ok "rustc on PATH in clean login zsh" || bad "rustc" "not on PATH"
+
+echo
+echo "== 13. REPO HYGIENE =="
+# The repo uses $HOME as its work tree, so these must never be committable
+for p in .config/gh/hosts.yml .pi/agent/auth.json .config/manicode/settings.json .cargo .cache .local/share/nvim .dotfiles .tmux/plugins .ssh; do
+  git --git-dir=/root/.dotfiles --work-tree=/root check-ignore -q "$p" 2>/dev/null && ok "ignored: $p" || bad "not ignored: $p" "leak risk"
+done
+# and they must not be tracked
+for p in .config/gh/hosts.yml .pi/agent/auth.json .config/manicode/device-key.json .dotfiles; do
+  git --git-dir=/root/.dotfiles ls-files --error-unmatch "$p" >/dev/null 2>&1 && bad "tracked secret: $p" "LEAK" || ok "not tracked: $p"
+done
+# 'dotfiles add .' must be a no-op
+ADD=$(git --git-dir=/root/.dotfiles --work-tree=/root add -A --dry-run . 2>/dev/null | wc -l)
+[ "$ADD" = "0" ] && ok "'dotfiles add .' is a no-op (repo in sync)" || bad "add ." "$ADD paths would be added"
+[ "$(git --git-dir=/root/.dotfiles --work-tree=/root status --porcelain | wc -l)" = "0" ] && ok "worktree CLEAN" || bad "worktree" "dirty"
+
+echo
+echo "=========================================================="
+echo "  FAILURES: $FAIL"
+echo "=========================================================="
