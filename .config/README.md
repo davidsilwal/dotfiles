@@ -9,11 +9,19 @@ Terminal-centric dotfiles: zsh and tmux.
 | [`tmux/`](./tmux/) | Native tmux 3.2+ configuration: prefix, panes, status bar, key bindings |
 | [`.fresh/`](./.fresh/) | Pristine baseline used by `setup.sh --fresh` |
 | [`setup.sh`](./setup.sh) | Installer/verifier for all of the above |
+| [`docs/`](./docs/) | [install.md](./docs/install.md) for a fresh machine, [tutorial.md](./docs/tutorial.md) for how it works |
 
 Both configs are self-contained: no plugin manager, no TPM, no network access
 on start-up. A missing optional tool (`starship`, `fzf`, `zoxide`, `eza`)
 removes its feature and nothing else — the same is true of the four vendored
 zsh plugins and tmux-resurrect.
+
+## Documentation
+
+| Document | Read it when |
+|---|---|
+| [docs/install.md](./docs/install.md) | setting up a new machine, updating, resetting, or fixing a broken prompt |
+| [docs/tutorial.md](./docs/tutorial.md) | learning how the boot chain, `.zshrc`, prompt and tmux fit together |
 
 ## Quick start
 
