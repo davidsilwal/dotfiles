@@ -84,6 +84,11 @@ cmd mkfile %{{
 # Clear conflicting defaults
 map d
 
+# lf 38+ds ships a default binding for <c-space> whose command does not exist in
+# this build, so it logs "unknown mapping: <c-space>" on every start. Binding
+# the key explicitly removes the message and gives it the useful job.
+map <c-space> :set preview!
+
 # File operations
 map D trash
 map <delete> trash

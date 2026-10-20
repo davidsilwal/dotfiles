@@ -214,6 +214,9 @@ install_tmux_plugins() {
             continue
         fi
         if GIT_TERMINAL_PROMPT=0 git clone --depth 1 --quiet "$url" "$dir" 2>/dev/null; then
+            # A shallow clone has no lib/tmux-test submodule, so the plugin's
+            # test helpers are dangling symlinks. Drop the dev-only scaffolding.
+            rm -rf "$dir/tests" "$dir/run_tests"
             ok "$name (cloned)"
         else
             err "$name (clone failed)"
