@@ -519,6 +519,25 @@ verify() {
         fi
     done
 
+    # Prompt cost, measured where it is worst: a directory that matches every
+    # language module. An empty home directory reports ~15 ms even when a badge
+    # is spawning `node --version` behind it.
+    if [ -x "$ZSH_DIR/scripts/prompt-bench.sh" ] && command -v starship >/dev/null 2>&1; then
+        # Two attempts, like the startup timing: a regression costs ~100 ms and
+        # fails both, while a burst of other work on the machine fails one.
+        for _attempt in 1 2; do
+            if out=$(PROMPT_BUDGET_MS=60 "$ZSH_DIR/scripts/prompt-bench.sh" --fixture 12 2>&1); then
+                ok "prompt: $(printf '%s\n' "$out" | awk '/config +median/{print "median " $3 " ms in a manifest-heavy project"}')"
+                break
+            fi
+            if [ "$_attempt" -eq 2 ]; then
+                failed=1
+                err "prompt over the 60 ms budget:"
+                printf '%s\n' "$out" | sed 's/^/      /' >&2
+            fi
+        done
+    fi
+
     if command -v shellcheck >/dev/null 2>&1; then
         if out=$(shellcheck -S warning "$CONFIG_HOME/setup.sh" 2>&1); then
             ok "shellcheck setup.sh"

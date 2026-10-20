@@ -7,9 +7,11 @@
 #
 #  Startup: ~150-300 ms with the four vendored plugins and the starship prompt
 #  (fast-syntax-highlighting ~40 ms; the prompt itself ~15-25 ms median, of
-#  which ~8-15 ms is spawning starship -- measure with `prompt-bench` rather
-#  than trusting a single reading). The gate in setup.sh is 400 ms; anything
-#  slower belongs in a command, not in this file. Check with: zsh -ic exit
+#  which ~8-15 ms is spawning starship -- language badges add nothing on top,
+#  because no badge format prints a version; see starship.toml). Measure with
+#  `prompt-bench` rather than trusting a single reading. The gate in setup.sh
+#  is 400 ms; anything slower belongs in a command, not in this file. Check
+#  with: zsh -ic exit
 # =============================================================================
 
 # Nothing below is useful to a script.

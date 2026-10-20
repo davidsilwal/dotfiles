@@ -184,18 +184,27 @@ Warnings (`!`) are for optional pieces -- a missing `eza` or `nvim` removes a
 feature and nothing else. Failures (`✗`) return a non-zero status; the
 troubleshooting table below maps them to causes.
 
-Measure the prompt, in the shell rather than from a guess:
+Measure the prompt, in the shell rather than from a guess. `--fixture`
+measures a throwaway directory holding every manifest the prompt recognises,
+which is the case that used to be 99 ms:
 
 ```bash
-prompt-bench 30
+prompt-bench --fixture 30
 ```
 
 ```
-  config   median   15 ms   p90   22 ms   max   45 ms
-  bare     median    8 ms   p90   19 ms   max   47 ms
-  config cost: 7 ms over the spawn floor
+  manifest-heavy fixture
+  starship.toml, 30 samples
+
+  config   median   27 ms   p90   60 ms   max   91 ms
+  bare     median   13 ms   p90   44 ms   max  110 ms
+
+  config cost: 14 ms over the spawn floor
   ✓ within the 60 ms budget
 ```
+
+`setup.sh --check` runs the same measurement and fails if the median passes
+60 ms, so a slow prompt shows up as a `✗` rather than as a feeling.
 
 And tmux:
 
@@ -268,7 +277,7 @@ dotfiles checkout -- .config/zsh      # branch's config back, prompt-bench inclu
 | Completions missing, Tab lists nothing | `compinit` dump is stale or was never built | `rm ~/.cache/zsh/zcompdump && exec zsh` |
 | tmux status bar is plain/default | config not loaded | `tmux -f ~/.config/tmux/tmux.conf`, then `prefix + r` |
 | `tmux: unknown option: prefix2` | tmux older than 1.6 | upgrade tmux |
-| Prompt is slow only in one project | a language badge is spawning its runtime | `prompt-bench`; `disabled = true` for that module |
+| Prompt is slow only in one project | a badge is spawning its runtime: `$version` was added back to a format, or `$style` is being used as a group style | `starship timings` in that directory names the module; `prompt-bench --fixture` reports the cost |
 
 The `ZDOTDIR` block, for `/etc/zsh/zshenv`, is:
 

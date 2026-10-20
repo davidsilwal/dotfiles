@@ -15,21 +15,50 @@
 #  notice. If p90 is more than four times the median, the host is contended
 #  and both figures are pessimistic.
 #
-#  Usage:  prompt-bench.sh [samples] [directory]
+#  Usage:  prompt-bench.sh [--fixture] [samples] [directory]
 #  Env:    PROMPT_BUDGET_MS  median budget for the config run (default 60)
 #  Exit:   0 within budget, 1 over budget, 2 nothing to measure
+#
+#  --fixture measures a throwaway directory holding every manifest the prompt
+#  recognises (`package.json`, `Cargo.toml`, `go.mod`, ...). That is the honest
+#  worst case: an empty home directory hides a language module that spawns its
+#  own runtime, which is how `node --version` (~75 ms here) went unnoticed
+#  while the prompt read 13 ms in ~. `setup.sh --check` runs this form.
 # =============================================================================
 set -uo pipefail
+
+fixture=
+while (( $# )); do
+    case $1 in
+        --fixture) fixture=1; shift ;;
+        --)        shift; break ;;
+        -h|--help) sed -n '3,19p' "$0" | sed 's/^#  \{0,1\}//'; exit 0 ;;
+        *)         break ;;
+    esac
+done
 
 samples=${1:-30}
 dir=${2:-$PWD}
 budget_ms=${PROMPT_BUDGET_MS:-60}
+bare=
+fixture_dir=
 
 command -v starship >/dev/null 2>&1 || { printf 'starship is not installed\n' >&2; exit 2; }
 if [[ ! $samples =~ ^[0-9]+$ ]] || (( samples < 1 )); then
     printf 'samples must be a positive number\n' >&2
     exit 2
 fi
+
+if [ -n "$fixture" ]; then
+    fixture_dir=$(mktemp -d "${TMPDIR:-/tmp}/prompt-bench.XXXXXX") || exit 2
+    dir=$fixture_dir
+    for f in package.json bun.lockb go.mod composer.json pom.xml \
+             build.gradle.kts stack.yaml pyproject.toml CMakeLists.txt; do
+        : > "$dir/$f"
+    done
+    printf '[package]\nname = "fixture"\nversion = "0.0.0"\n' > "$dir/Cargo.toml"
+fi
+
 [ -d "$dir" ] || { printf 'not a directory: %s\n' "$dir" >&2; exit 2; }
 
 export STARSHIP_CONFIG=${STARSHIP_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/zsh/starship.toml}
@@ -38,7 +67,7 @@ export STARSHIP_CONFIG=${STARSHIP_CONFIG:-${XDG_CONFIG_HOME:-$HOME/.config}/zsh/
 # An empty config measures the binary and nothing else. Created next to the
 # real one so it is on the same filesystem, removed on exit.
 bare=$(mktemp "${TMPDIR:-/tmp}/prompt-bench.XXXXXX.toml")
-trap 'rm -f -- "$bare"' EXIT INT TERM
+trap '[ -n "$bare" ] && rm -f -- "$bare"; [ -n "$fixture_dir" ] && rm -rf -- "$fixture_dir"' EXIT INT TERM
 printf '%s\n' 'format = "$character"' >"$bare"
 
 cd -- "$dir" || exit 2
@@ -71,8 +100,10 @@ row() {                         # row <label> <median> <p90> <max>
     printf '  %-8s median %4s ms   p90 %4s ms   max %4s ms\n' "$1" "$2" "$3" "$4"
 }
 
+if [ -n "$fixture_dir" ]; then label="manifest-heavy fixture"; else label=${dir/#$HOME/\~}; fi
+
 printf '\n  %s\n  %s, %s samples\n\n' \
-    "${dir/#$HOME/\~}" "$(basename "$STARSHIP_CONFIG")" "$samples"
+    "$label" "$(basename "$STARSHIP_CONFIG")" "$samples"
 
 cfg=()
 plain=()

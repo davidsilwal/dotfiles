@@ -109,32 +109,43 @@ badges, every language module is enabled and `detect_extensions = []` leaves
 it matching manifest files only (`Cargo.toml`, `go.mod`, `composer.json`,
 `pom.xml`, `build.gradle.kts`, ...). That is one readdir of the top level, and
 it removes the false positives the walk produced: a stray `.js` file in `/tmp`
-used to make the prompt claim a Node project and pay ~90 ms asking node for
-its version. A badge still costs one spawn of that language's own tool when
-its manifest is present, because that is where the version comes from. That
-spawn can dominate: a directory holding `package.json` measures ~90 ms median
-against ~15 ms bare on this host, because node itself takes ~85 ms to start.
-It is the price of the version badge; `disabled = true` opts a module out.
+used to make the prompt claim a Node project.
+
+A third cost was the version badge, and it was the one that stayed hidden.
+Starship starts a module's tool when the format prints `$version` -- and, less
+obviously, when the format uses `$style` as the style of a group: that resolves
+the module eagerly and fetches the version anyway. Both shapes render the same
+badge, so `[$symbol]($style)` paid `node --version` (~75 ms here, ~600 ms for a
+cold `rustc`) where `[$symbol](fg:crust bg:green)` pays nothing. Every badge
+now spells out its colour and prints no version: a directory holding
+`package.json` measured 99 ms median before and ~20 ms after, the same as an
+empty one. Verified with `strace` and `starship timings` -- every language
+module is under 1 ms with all the manifests present.
+
+Want a version back? Add `$version` to that one module's format and watch
+`prompt-bench --fixture` charge for it. `disabled = true` drops a badge.
 
 Measure instead of guessing - median and p90, next to the spawn floor:
 
 ```console
-$ prompt-bench 30
+$ prompt-bench --fixture 30
 
-  ~
+  manifest-heavy fixture
   starship.toml, 30 samples
 
-  config   median   15 ms   p90   22 ms   max   45 ms
-  bare     median    8 ms   p90   19 ms   max   47 ms
+  config   median   27 ms   p90   60 ms   max   91 ms
+  bare     median   13 ms   p90   44 ms   max  110 ms
 
-  config cost: 7 ms over the spawn floor
+  config cost: 14 ms over the spawn floor
   ✓ within the 60 ms budget
 ```
 
-The median is the figure to quote: interactive latency on a busy machine has a
-long tail, so one reading can be five times the median. `p90` is the tail you
-will notice, and the script exits non-zero when the median passes
-`PROMPT_BUDGET_MS` (default 60).
+`--fixture` builds a throwaway directory holding every manifest the prompt
+knows about, so the number covers the worst case instead of a bare `~`; that is
+the form `setup.sh --check` runs. The median is the figure to quote:
+interactive latency on a busy machine has a long tail, so one reading can be
+five times the median. `p90` is the tail you will notice, and the script exits
+non-zero when the median passes `PROMPT_BUDGET_MS` (default 60).
 
 Deliberately **not** installed: terminal colour schemes (the palette lives in
 the terminal's own config), TPM, tmux-continuum (its autosave needs TPM's

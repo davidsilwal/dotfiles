@@ -76,8 +76,7 @@ format = '[[($all_status$ahead_behind )](fg:crust bg:yellow)]($style)'
 detect_files = ["package.json", ".node-version", ".nvmrc"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 # --- Language modules --------------------------------------------------------
 #
@@ -86,54 +85,63 @@ format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
 # `detect_extensions = []` leaves each module with `detect_files` only, so it
 # stats a handful of well-known manifests in the current directory instead of
 # walking the tree. That walk was the ~50 ms cost, and it also produced false
-# positives: a stray .js file in /tmp made the prompt claim a Node project and
-# pay ~90 ms to ask node for a version.
+# positives: a stray .js file in /tmp made the prompt claim a Node project.
 #
-# A badge still costs one spawn of the language's own tool when its manifest is
-# present, because that is how the version is read (starship computes $version
-# even when the format leaves it out). With a manifest there is something worth
-# reporting, so that is the intended trade. Drop a badge with `disabled = true`.
+# A badge used to also print the runtime's version, which costs one spawn of
+# that runtime per prompt: `node --version` is 75 ms here, `rustc --version` 33 ms
+# warm and 600 ms cold — the whole 60 ms prompt budget, and more.
+#
+# Two things had to go, and the second one is the surprise: `$version` in the
+# format, and `$style` as the style of the enclosing group. Using `$style` there
+# makes starship resolve the module's style eagerly, which means it fetches the
+# version after all — a format of '[$symbol]($style)' spawns node even though it
+# never prints a version, while '[$symbol](fg:crust bg:green)' does not. Since
+# every badge here is the same colour, the colour is now written out literally
+# and nothing is fetched. Verified with strace and `starship timings`: every
+# module below is <1 ms in a directory that has all of these manifests.
+#
+# These modules therefore have no `style =` key: only `$style` reads it, and a
+# key no format reads is a trap. To recolour a badge, change the colour in its
+# format (the palette names are at the bottom of this file).
+#
+# Want a version back? Change one format to '[$symbol $version](fg:crust
+# bg:green)' and accept that runtime's spawn on every prompt; `prompt-bench`
+# shows what it costs. Drop a badge entirely with `disabled = true`.
 [bun]
 detect_files = ["bun.lockb", "bun.lock", "bunfig.toml"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [c]
 detect_files = ["CMakeLists.txt", "meson.build", "configure.ac"]
 detect_extensions = []
 symbol = " "
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [rust]
 detect_files = ["Cargo.toml"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [golang]
 detect_files = ["go.mod", "go.sum", "go.work"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [php]
 detect_files = ["composer.json", "composer.lock", ".php-version"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [java]
 detect_files = ["pom.xml", "build.gradle", "settings.gradle", ".java-version"]
 detect_extensions = []
 symbol = " "
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [jj_bookmark]
 symbol = ""
@@ -148,27 +156,23 @@ format = '[[($all )](fg:crust bg:yellow)]($style)'
 detect_files = ["build.gradle.kts", "settings.gradle.kts"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [haskell]
 detect_files = ["stack.yaml", "cabal.project", "package.yaml"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version) ](fg:crust bg:green)]($style)'
+format = '[$symbol](fg:crust bg:green)'
 
 [python]
 detect_files = ["pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile", ".python-version", "poetry.lock", "uv.lock", "environment.yml"]
 detect_extensions = []
 symbol = ""
-style = "bg:green"
-format = '[[ $symbol( $version)(\(#$virtualenv\)) ](fg:crust bg:green)]($style)'
+format = '[$symbol( \($virtualenv\))](fg:crust bg:green)'
 
 [docker_context]
 symbol = ""
-style = "bg:sapphire"
-format = '[[ $symbol( $context) ](fg:crust bg:sapphire)]($style)'
+format = '[$symbol( $context)](fg:crust bg:sapphire)'
 
 [conda]
 disabled = true
