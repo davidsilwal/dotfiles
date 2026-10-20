@@ -1,0 +1,59 @@
+# =============================================================================
+#  ~/.config/zsh/.zshenv - environment, read by every zsh
+#
+#  /etc/zsh/zshenv sets ZDOTDIR to ~/.config/zsh, so zsh reads this file
+#  instead of ~/.zshenv. It runs for interactive shells, scripts, `zsh -c`
+#  and remote commands alike: no output, no argument parsing, no interactive
+#  shortcuts that could break a non-interactive caller.
+# =============================================================================
+
+# --- XDG base directories ---------------------------------------------------
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+# --- PATH -------------------------------------------------------------------
+# `typeset -U path` drops duplicates, so prepending is always safe.
+typeset -U path
+path=(
+  "$HOME/.local/bin"
+  "$HOME/.cargo/bin"
+  $path
+)
+export PATH
+
+# --- Programs the rest of the config expects --------------------------------
+if command -v nvim >/dev/null 2>&1; then
+  export EDITOR=nvim
+  export VISUAL=nvim
+else
+  export EDITOR=vi
+  export VISUAL=vi
+fi
+
+export PAGER=less
+export LESS='-R -F -X -i -M'
+export LESSHISTFILE=-
+
+# --- Prompt -----------------------------------------------------------------
+# starship.toml sits beside this file, so `setup.sh --fresh` restores it with
+# the rest of the shell configuration instead of relying on starship's own
+# $XDG_CONFIG_HOME lookup.
+if [[ -r "${ZDOTDIR:-$HOME/.config/zsh}/starship.toml" ]]; then
+  export STARSHIP_CONFIG="${ZDOTDIR:-$HOME/.config/zsh}/starship.toml"
+fi
+
+# --- History file location (written by .zshrc) ------------------------------
+export HISTFILE="$XDG_STATE_HOME/zsh/history"
+
+# --- Completion -------------------------------------------------------------
+# Ubuntu's /etc/zsh/zshrc calls compinit unless this is set. .zshrc runs it
+# with a dump file under $XDG_CACHE_HOME instead, and doing both scans $fpath
+# twice and leaves a stray dump next to the config.
+skip_global_compinit=1
+
+# --- Locale -----------------------------------------------------------------
+# Falls back gracefully on hosts with no locale generated.
+: "${LANG:=C.UTF-8}"
+export LANG

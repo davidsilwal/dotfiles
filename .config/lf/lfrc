@@ -24,15 +24,22 @@ cmd on-quit &ctpvquit $id
 #  Commands
 # ─────────────────────────────────────────────
 
+# GUI openers are optional: the first one that exists on this host wins, and a
+# missing one falls back to editing the file instead of failing silently.
 cmd open &{{
-    case $(file --mime-type -Lb $f) in
-        text/*) lf -remote "send $id \$nvim $f";;
-        image/*) imv $f;;
-        audio/*) mpv $f;;
-        video/*) mpv $f;;
-        application/pdf) zathura $f;;
-        *) xdg-open $f;;
+    mime=$(file --mime-type -Lb "$f")
+    case $mime in
+        text/*) opener= ;;
+        image/*) opener=imv ;;
+        audio/*|video/*) opener=mpv ;;
+        application/pdf) opener=zathura ;;
+        *) opener=xdg-open ;;
     esac
+    if [ -n "$opener" ] && command -v "$opener" >/dev/null 2>&1; then
+        "$opener" "$f"
+    else
+        lf -remote "send $id \$nvim $f"
+    fi
 }}
 
 cmd trash %trash-put $fx

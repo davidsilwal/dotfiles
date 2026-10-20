@@ -6,13 +6,9 @@ These are my dotfiles for use on arch and ubuntu based linux distributions. My s
 
 - qtile ([submodule](https://github.com/radleylewis/qtile))
 - neovim ([submodule](https://github.com/radleylewis/nvim))
-- zsh ([submodule](https://github.com/radleylewis/zsh))
-- tmux
-- alacritty
-- rofi
+- zsh ([`~/.config/zsh`](./.config/zsh), installed by [`setup.sh`](./.config/setup.sh))
+- tmux ([`~/.config/tmux`](./.config/tmux), no TPM)
 - lf
-- brave
-- mako
 
 Feel free to use any of the configurations herein for inspiration.
 
@@ -28,14 +24,14 @@ cd ~
 git clone --bare git@github.com:radleylewis/dotfiles.git .dotfiles
 ```
 
-2. include dotfiles alias in .bashrc / .zshrc
+2. include the dotfiles alias in `~/.config/zsh/.zshrc`
 
 ```bash
-echo alias dotfiles=\'git --git-dir='$HOME'/.dotfiles --work-tree='$HOME'\' >> .bashrc
+echo alias dotfiles=\'git --git-dir='$HOME'/.dotfiles --work-tree='$HOME'\' >> ~/.config/zsh/.zshrc
 ```
 
 ```bash
-source ~/.bashrc
+source ~/.config/zsh/.zshrc
 ```
 
 Don't track files noting $HOME work-tree.
@@ -54,7 +50,7 @@ dotfiles checkout
 cd ~/.config/nvim
 ```
 
-Clone the submodule nvim which may not happen automatically.
+Clone the nvim and qtile submodules, which may not happen automatically.
 
 ```bash
 dotfiles submodule update

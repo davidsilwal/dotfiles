@@ -1,6 +1,0 @@
-# Custom database location
-db_path = ~/Projects/zhli/.zhli/data.db
-
-# Cards per review session (default: 50)
-session_limit = 25
-

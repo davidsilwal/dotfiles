@@ -4,6 +4,3 @@
 [submodule ".config/qtile"]
 	path = .config/qtile
 	url = https://github.com/radleylewis/qtile.git
-[submodule ".config/zsh"]
-	path = .config/zsh
-	url = https://github.com/davidsilwal/zsh.git
