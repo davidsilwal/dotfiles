@@ -6,9 +6,10 @@
 #  guarded, so a missing binary only removes the feature that used it.
 #
 #  Startup: ~150-300 ms with the four vendored plugins and the starship prompt
-#  (fast-syntax-highlighting ~40 ms, the prompt ~50 ms) on a host under load.
-#  The gate in setup.sh is 400 ms; anything slower belongs in a command, not
-#  in this file. Check with:  zsh -ic exit
+#  (fast-syntax-highlighting ~40 ms; the prompt itself ~15-25 ms median, of
+#  which ~8-15 ms is spawning starship -- measure with `prompt-bench` rather
+#  than trusting a single reading). The gate in setup.sh is 400 ms; anything
+#  slower belongs in a command, not in this file. Check with: zsh -ic exit
 # =============================================================================
 
 # Nothing below is useful to a script.
@@ -175,6 +176,12 @@ else
     PROMPT='%F{blue}%~%f%F{yellow}$(_zs_git_branch)%f %(?..%F{red}[%?]%f )%# '
   }
   precmd_functions+=(_zs_precmd)
+fi
+
+# Measuring beats guessing: median and p90 for this config, next to the cost
+# of spawning starship with an empty config. See zsh/scripts/prompt-bench.sh.
+if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/prompt-bench.sh ]]; then
+  alias prompt-bench="${ZDOTDIR:-$HOME/.config/zsh}/scripts/prompt-bench.sh"
 fi
 
 # Keep the terminal title on the current directory.

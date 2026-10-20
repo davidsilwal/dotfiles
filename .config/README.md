@@ -5,6 +5,7 @@ Terminal-centric dotfiles: zsh and tmux.
 | Directory | What it is |
 |---|---|
 | [`zsh/`](./zsh/) | Shell configuration: history, completion, bindings, Starship, fzf, zoxide |
+| [`zsh/scripts/`](./zsh/scripts/) | `prompt-bench` - median/p90 prompt latency against the spawn floor |
 | [`tmux/`](./tmux/) | Native tmux 3.2+ configuration: prefix, panes, status bar, key bindings |
 | [`.fresh/`](./.fresh/) | Pristine baseline used by `setup.sh --fresh` |
 | [`setup.sh`](./setup.sh) | Installer/verifier for all of the above |
@@ -86,6 +87,46 @@ the same hex values, and the prompt is `starship` on the
 `STARSHIP_CONFIG` so that file lives with the rest of the shell config and
 survives `--fresh`. The prompt's powerline separators need a Nerd Font, which
 `setup.sh` installs when fontconfig cannot already resolve it.
+
+### Prompt cost
+
+The prompt is a `starship` process: one fork per prompt, 8-15 ms on this host
+before it has rendered anything. `prompt-bench` reports that floor separately
+from the configuration, so the two costs stay distinguishable.
+
+Two avoidable costs used to sit on top of it, both now gone: the `os` module
+probed the distribution (~50 ms) for a single static icon, and every language
+module walked the working tree looking for source files. Rather than dropping
+badges, every language module is enabled and `detect_extensions = []` leaves
+it matching manifest files only (`Cargo.toml`, `go.mod`, `composer.json`,
+`pom.xml`, `build.gradle.kts`, ...). That is one readdir of the top level, and
+it removes the false positives the walk produced: a stray `.js` file in `/tmp`
+used to make the prompt claim a Node project and pay ~90 ms asking node for
+its version. A badge still costs one spawn of that language's own tool when
+its manifest is present, because that is where the version comes from. That
+spawn can dominate: a directory holding `package.json` measures ~90 ms median
+against ~15 ms bare on this host, because node itself takes ~85 ms to start.
+It is the price of the version badge; `disabled = true` opts a module out.
+
+Measure instead of guessing - median and p90, next to the spawn floor:
+
+```console
+$ prompt-bench 30
+
+  ~
+  starship.toml, 30 samples
+
+  config   median   15 ms   p90   22 ms   max   45 ms
+  bare     median    8 ms   p90   19 ms   max   47 ms
+
+  config cost: 7 ms over the spawn floor
+  ✓ within the 60 ms budget
+```
+
+The median is the figure to quote: interactive latency on a busy machine has a
+long tail, so one reading can be five times the median. `p90` is the tail you
+will notice, and the script exits non-zero when the median passes
+`PROMPT_BUDGET_MS` (default 60).
 
 Deliberately **not** installed: terminal colour schemes (the palette lives in
 the terminal's own config), TPM, tmux-continuum (its autosave needs TPM's
