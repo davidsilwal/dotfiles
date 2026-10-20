@@ -180,7 +180,8 @@ that matter:
 ✓ starship
 ✓ font: JetBrainsMono Nerd Font
 ✓ plugin: zsh-autosuggestions
-✓ prompt: median 2x ms, xx ms over the spawn floor
+✓ prompt: median 22 ms, 13 ms over the spawn floor
+✓ prompt starts no runtime (6 shadowed)
 ```
 
 Warnings (`!`) are for optional pieces -- a missing `eza` or `nvim` removes a
