@@ -28,6 +28,8 @@ If the config is already installed and you only want to update or reset it, see
 | `curl` | to download the Nerd Font when it is missing |
 | network | packages, plugins, font |
 | `unzip` **or** `python3` | to unpack the font archive (either one is enough) |
+| `bash` 3.2+ | `setup.sh` and `versions` need nothing newer |
+| `bash` 5.0+ for `prompt-bench` | it times with `EPOCHREALTIME`; macOS ships 3.2 as `/bin/bash`, so `brew install bash` if you want to measure |
 
 zsh, tmux, fzf, fd, bat, eza, ripgrep, zoxide, neovim and starship are
 installed by the script; you do not need them beforehand. On Debian and
@@ -203,8 +205,14 @@ prompt-bench --fixture 30
   ✓ within the 60 ms budget
 ```
 
-`setup.sh --check` runs the same measurement and fails if the median passes
-60 ms, so a slow prompt shows up as a `✗` rather than as a feeling.
+`setup.sh --check` runs the same measurement, but judges `config` minus the
+spawn floor (`--max-cost=30`) instead of the absolute median: a busy machine
+raises both numbers, and the check should not fail because something else is
+compiling. A badge that starts a runtime adds ~70 ms to the config alone, which
+is what it is there to catch.
+
+The badges do not print toolchain versions -- that costs a runtime spawn on
+every prompt. `versions` prints them for the current directory on demand.
 
 And tmux:
 
@@ -278,6 +286,7 @@ dotfiles checkout -- .config/zsh      # branch's config back, prompt-bench inclu
 | tmux status bar is plain/default | config not loaded | `tmux -f ~/.config/tmux/tmux.conf`, then `prefix + r` |
 | `tmux: unknown option: prefix2` | tmux older than 1.6 | upgrade tmux |
 | Prompt is slow only in one project | a badge is spawning its runtime: `$version` was added back to a format, or `$style` is being used as a group style | `starship timings` in that directory names the module; `prompt-bench --fixture` reports the cost |
+| Badge is there but the version is not | that is the design: a version costs a runtime spawn per prompt | `versions` prints it for the current directory |
 
 The `ZDOTDIR` block, for `/etc/zsh/zshenv`, is:
 

@@ -408,6 +408,8 @@ verify() {
     check_file "$TMUX_DIR/tmux.conf" || failed=1
     check_file "$HOME/.tmux.conf" || failed=1
     check_file "$HOME/.zshenv"    || failed=1
+    check_file "$ZSH_DIR/scripts/prompt-bench.sh" || failed=1
+    check_file "$ZSH_DIR/scripts/versions.sh"     || failed=1
 
     # Syntax of the zsh files, without starting a shell.
     for f in "$ZSH_DIR/.zshenv" "$ZSH_DIR/.zshrc"; do
@@ -522,17 +524,22 @@ verify() {
     # Prompt cost, measured where it is worst: a directory that matches every
     # language module. An empty home directory reports ~15 ms even when a badge
     # is spawning `node --version` behind it.
+    #
+    # Judged on the config's own cost (median minus the bare spawn floor), not
+    # on the absolute median: a loaded machine raises both numbers, and the
+    # check must not fail because something else is compiling. A badge that
+    # starts a runtime adds ~70 ms to the config alone.
     if [ -x "$ZSH_DIR/scripts/prompt-bench.sh" ] && command -v starship >/dev/null 2>&1; then
         # Two attempts, like the startup timing: a regression costs ~100 ms and
         # fails both, while a burst of other work on the machine fails one.
         for _attempt in 1 2; do
-            if out=$(PROMPT_BUDGET_MS=60 "$ZSH_DIR/scripts/prompt-bench.sh" --fixture 12 2>&1); then
-                ok "prompt: $(printf '%s\n' "$out" | awk '/config +median/{print "median " $3 " ms in a manifest-heavy project"}')"
+            if out=$("$ZSH_DIR/scripts/prompt-bench.sh" --fixture 12 --max-cost=30 2>&1); then
+                ok "prompt: $(printf '%s\n' "$out" | awk '/config +median/{m=$3} /config cost:/{c=$3} END{printf "median %s ms, %s ms over the spawn floor", m, c}')"
                 break
             fi
             if [ "$_attempt" -eq 2 ]; then
                 failed=1
-                err "prompt over the 60 ms budget:"
+                err "prompt carries too much of its own cost:"
                 printf '%s\n' "$out" | sed 's/^/      /' >&2
             fi
         done

@@ -81,6 +81,7 @@ defined above it.
 | `zsh/.zshrc` | interactive shell: history, options, completion, keys, prompt, tools, aliases, plugins |
 | `zsh/starship.toml` | prompt layout, modules, Catppuccin Mocha palette |
 | `zsh/scripts/prompt-bench.sh` | median/p90 prompt latency vs. the spawn floor (`prompt-bench`) |
+| `zsh/scripts/versions.sh` | toolchain versions for the current directory, on demand (`versions`) |
 | `zsh/plugins/` | four shallow clones, created by `setup.sh`, ignored by git |
 | `tmux/tmux.conf` | one file: prefix, panes, status bar, keys, resurrect hook |
 | `tmux/plugins/` | tmux-resurrect clone, ignored by git |
@@ -179,9 +180,18 @@ written out instead of being spliced in from the module's `style`. In a
 directory holding every manifest, `starship timings` now reports every language
 module under 1 ms, and `strace` shows no child process at all.
 
-Adding `$version` back to one module is the documented way to get it: the badge
-that matters to you, paid for on purpose. `prompt-bench --fixture` then shows
-the bill instead of hiding it.
+The version did not disappear, it moved to a command:
+
+```console
+$ versions
+  node     v22.22.1
+  rust     1.99.1 (58cf8f9c3 2026-10-13)
+```
+
+`versions` reads the same manifests the badges match on, so it answers what the
+prompt used to say, for the price of one command. Adding `$version` back to one
+module is the other option: the badge that matters to you, paid for on purpose.
+`prompt-bench --fixture` then shows the bill instead of hiding it.
 
 ### What is left
 
@@ -282,6 +292,7 @@ prompt-bench             # median/p90/max for this config vs. a bare spawn
 prompt-bench --fixture   # the worst case: every manifest in one directory
 prompt-bench 50 ~/code   # more samples, another directory
 PROMPT_BUDGET_MS=30 prompt-bench   # exit non-zero above 30 ms
+prompt-bench --max-cost=30        # judge config minus the spawn floor instead
 ```
 
 Measure with `--fixture` when you change the prompt. A bare `~` hides a

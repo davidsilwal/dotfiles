@@ -186,6 +186,13 @@ if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/prompt-bench.sh ]]; then
   alias prompt-bench="${ZDOTDIR:-$HOME/.config/zsh}/scripts/prompt-bench.sh"
 fi
 
+# The badges name the toolchain but not its version, because printing it costs
+# a runtime spawn per prompt. `versions` is where that went: the same manifests
+# the badges match on, read on demand.
+if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/versions.sh ]]; then
+  alias versions="${ZDOTDIR:-$HOME/.config/zsh}/scripts/versions.sh"
+fi
+
 # Keep the terminal title on the current directory.
 _zs_title() { print -Pn '\e]0;%~\a' }
 precmd_functions+=(_zs_title)

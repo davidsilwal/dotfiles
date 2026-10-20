@@ -15,9 +15,15 @@
 #  notice. If p90 is more than four times the median, the host is contended
 #  and both figures are pessimistic.
 #
-#  Usage:  prompt-bench.sh [--fixture] [samples] [directory]
+#  Usage:  prompt-bench.sh [--fixture] [--max-cost=<ms>] [samples] [directory]
 #  Env:    PROMPT_BUDGET_MS  median budget for the config run (default 60)
 #  Exit:   0 within budget, 1 over budget, 2 nothing to measure
+#
+#  --max-cost judges `config - bare`, the part the configuration is responsible
+#  for, instead of the absolute median. Both numbers move with machine load, so
+#  their difference does not: a busy host can push a 20 ms prompt to 50 ms
+#  without anything being wrong with the config. `setup.sh --check` uses this
+#  form, because a check that fails when the machine is busy is not a check.
 #
 #  --fixture measures a throwaway directory holding every manifest the prompt
 #  recognises (`package.json`, `Cargo.toml`, `go.mod`, ...). That is the honest
@@ -28,24 +34,47 @@
 set -uo pipefail
 
 fixture=
+max_cost=
+positional=()
 while (( $# )); do
     case $1 in
-        --fixture) fixture=1; shift ;;
-        --)        shift; break ;;
-        -h|--help) sed -n '3,19p' "$0" | sed 's/^#  \{0,1\}//'; exit 0 ;;
-        *)         break ;;
+        --fixture)     fixture=1 ;;
+        --max-cost=*)  max_cost=${1#*=} ;;
+        --)            shift; positional+=("$@"); break ;;
+        -h|--help)     sed -n '3,27p' "$0" | sed -E 's/^#[ ]{0,2}//'; exit 0 ;;
+        -*)            printf 'unknown option: %s\n' "$1" >&2; exit 2 ;;
+        *)             positional+=("$1") ;;
     esac
+    shift
 done
 
-samples=${1:-30}
-dir=${2:-$PWD}
+samples=${positional[0]:-30}
+dir=${positional[1]:-$PWD}
 budget_ms=${PROMPT_BUDGET_MS:-60}
 bare=
 fixture_dir=
 
+# EPOCHREALTIME is a bash 5.0 builtin variable. Without it the arithmetic below
+# would fail with an unbound variable under `set -u`, so say what is wrong:
+# macOS still ships bash 3.2 as /bin/bash.
+if [ -z "${EPOCHREALTIME:-}" ]; then
+    printf 'prompt-bench needs bash 5.0+ (EPOCHREALTIME); this is %s\n' "$BASH_VERSION" >&2
+    printf 'on macOS: brew install bash, then run it with that bash\n' >&2
+    exit 2
+fi
+
 command -v starship >/dev/null 2>&1 || { printf 'starship is not installed\n' >&2; exit 2; }
 if [[ ! $samples =~ ^[0-9]+$ ]] || (( samples < 1 )); then
     printf 'samples must be a positive number\n' >&2
+    exit 2
+fi
+if [ -n "$max_cost" ] && { [[ ! $max_cost =~ ^[0-9]+$ ]] || (( max_cost < 1 )); }; then
+    printf -- '--max-cost needs a positive number of milliseconds\n' >&2
+    exit 2
+fi
+
+if [ -n "$fixture" ] && (( ${#positional[@]} > 1 )); then
+    printf -- '--fixture makes its own directory; drop the one given\n' >&2
     exit 2
 fi
 
@@ -120,8 +149,20 @@ bare_median=$MEDIAN
 
 printf '\n  config cost: %s ms over the spawn floor\n' "$(( cfg_median - bare_median ))"
 
+# Two separate sample runs: on a contended host the floor can measure above the
+# config. That is noise, not a negative cost.
+cost=$(( cfg_median - bare_median ))
+(( cost < 0 )) && cost=0
 status=0
-if (( cfg_median > budget_ms )); then
+if [ -n "$max_cost" ] && (( cost > max_cost )); then
+    printf '  %s config costs %s ms, over the %s ms allowed\n' '✗' "$cost" "$max_cost"
+    status=1
+elif [ -n "$max_cost" ] && (( cfg_p90 > cfg_median * 4 )); then
+    printf '  %s config cost within %s ms, but p90 is %sx the median (host contention)\n' \
+        '!' "$max_cost" "$(( cfg_p90 / (cfg_median ? cfg_median : 1) ))"
+elif [ -n "$max_cost" ]; then
+    printf '  %s config cost %s ms, within the %s ms allowed\n' '✓' "$cost" "$max_cost"
+elif (( cfg_median > budget_ms )); then
     printf '  %s over the %s ms budget\n' '✗' "$budget_ms"
     status=1
 elif (( cfg_p90 > cfg_median * 4 )); then

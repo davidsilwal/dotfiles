@@ -5,7 +5,7 @@ Terminal-centric dotfiles: zsh and tmux.
 | Directory | What it is |
 |---|---|
 | [`zsh/`](./zsh/) | Shell configuration: history, completion, bindings, Starship, fzf, zoxide |
-| [`zsh/scripts/`](./zsh/scripts/) | `prompt-bench` - median/p90 prompt latency against the spawn floor |
+| [`zsh/scripts/`](./zsh/scripts/) | `prompt-bench` - median/p90 prompt latency against the spawn floor; `versions` - the toolchain versions the badges do not print |
 | [`tmux/`](./tmux/) | Native tmux 3.2+ configuration: prefix, panes, status bar, key bindings |
 | [`.fresh/`](./.fresh/) | Pristine baseline used by `setup.sh --fresh` |
 | [`setup.sh`](./setup.sh) | Installer/verifier for all of the above |
@@ -122,8 +122,20 @@ now spells out its colour and prints no version: a directory holding
 empty one. Verified with `strace` and `starship timings` -- every language
 module is under 1 ms with all the manifests present.
 
-Want a version back? Add `$version` to that one module's format and watch
-`prompt-bench --fixture` charge for it. `disabled = true` drops a badge.
+Versions did not disappear, they moved to a command. `versions` prints the
+version of every toolchain whose manifest is in the current directory -- the
+same list the badges match on -- so it answers what the prompt used to say:
+
+```console
+$ versions
+  node     v22.22.1
+  rust     1.99.1 (58cf8f9c3 2026-10-13)
+  python   3.14.4
+```
+
+Want it back in the prompt instead? Add `$version` to that one module's format
+and watch `prompt-bench --fixture` charge for it. `disabled = true` drops a
+badge.
 
 Measure instead of guessing - median and p90, next to the spawn floor:
 
@@ -141,8 +153,10 @@ $ prompt-bench --fixture 30
 ```
 
 `--fixture` builds a throwaway directory holding every manifest the prompt
-knows about, so the number covers the worst case instead of a bare `~`; that is
-the form `setup.sh --check` runs. The median is the figure to quote:
+knows about, so the number covers the worst case instead of a bare `~`.
+`--max-cost=<ms>` judges the config's own cost instead -- `config` minus the
+spawn floor -- which is what `setup.sh --check` uses: both figures rise with
+machine load, their difference does not. The median is the figure to quote:
 interactive latency on a busy machine has a long tail, so one reading can be
 five times the median. `p90` is the tail you will notice, and the script exits
 non-zero when the median passes `PROMPT_BUDGET_MS` (default 60).
