@@ -94,7 +94,7 @@ head_ "3. Toolchain"
 
 export PATH="/root/.local/bin:$PATH"
 for t in zsh git curl fzf fd bat eza rg zoxide starship nvim lf trash-put \
-         urlview lazygit fontconfig shellcheck python3 pip3 unzip zip; do
+         urlview lazygit fc-list fc-cache shellcheck python3 pip3 unzip zip; do
     command -v $t >/dev/null 2>&1 && ok "$t -> $(command -v $t)" || bad "$t" "not installed"
 done
 for s in ctpv ctpvclear ctpvquit dotfiles-verify; do
