@@ -13,6 +13,7 @@ the [README](../README.md).
 - [`.zshrc`, stage by stage](#zshrc-stage-by-stage)
 - [The prompt](#the-prompt)
 - [tmux](#tmux)
+- [Neovim](#neovim)
 - [Changing things safely](#changing-things-safely)
 - [Adding features](#adding-features)
 - [Measuring instead of guessing](#measuring-instead-of-guessing)

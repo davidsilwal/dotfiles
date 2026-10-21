@@ -193,6 +193,9 @@ that matter:
 ✓ zsh startup: 2xx ms          (budget 400)
 ✓ tmux config parses (tmux 3.8)
 ✓ starship
+✓ nvim 0.11.6 (LazyVim needs >= 0.11.2)
+✓ neovim plugins: 96
+✓ neovim tools: 74 (mason)
 ✓ font: JetBrainsMono Nerd Font
 ✓ plugin: zsh-autosuggestions
 ✓ prompt: median 22 ms, 13 ms over the spawn floor
@@ -259,6 +262,17 @@ And tmux:
 tmux new -s check     # then prefix + r reloads the config, prefix + d detaches
 ```
 
+And Neovim:
+
+```bash
+nvim --headless '+checkhealth lazy' +qa     # the plugin manager's own report
+nvim                                          # the editor itself
+```
+
+The first start asks GitHub Copilot to authenticate if the Copilot extra is
+enabled; run `:Copilot auth` once and the chat panel (`<leader>aa`) and the
+completion source start working.
+
 ## Updating
 
 The plugins are clones, the configuration is a git checkout, and `setup.sh`
@@ -272,6 +286,26 @@ exec zsh
 
 `exec zsh` is needed for `.zshrc` changes; `starship.toml` edits take effect on
 the next prompt without it, and tmux picks up `tmux.conf` on `prefix + r`.
+
+Neovim has its own repository and its own lockfile:
+
+```bash
+cd ~/.config/nvim
+git fetch origin && git checkout origin/lazyvim   # the branch this dotfiles repo points at
+nvim --headless '+Lazy! update' +qa               # update the plugins
+git commit -am 'chore: update the lockfile' && git push
+```
+
+`lazy-lock.json` pins every plugin to a commit, so the same tree is reproduced
+on the next machine. After pushing the lockfile, point the submodule at the new
+commit:
+
+```bash
+cd ~
+git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" update-index \
+    --cacheinfo 160000,$(git -C ~/.config/nvim rev-parse HEAD),.config/nvim
+git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" commit -m 'Update the nvim pointer'
+```
 
 ## Resetting to the baseline
 
@@ -294,6 +328,15 @@ It first writes a tarball to `~/backups/` and prints its path. It removes:
 
 Everything else under `~/.config` is untouched. `~/.local/state/tmux/resurrect`
 is deliberately preserved, so saved tmux sessions survive the reset.
+`~/.config/nvim` is deliberately **not** removed: it is a submodule, not a
+baseline copy, and its plugin tree lives in `~/.local/share/nvim` anyway.
+Restore it from the repository with:
+
+```bash
+cd ~
+dotfiles checkout -- .config/nvim      # discard local edits
+git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" submodule update --init .config/nvim
+```
 
 ```bash
 ~/.config/setup.sh --fresh --no-backup    # skip the tarball
@@ -326,6 +369,10 @@ dotfiles checkout -- .config/zsh      # branch's config back, both scripts inclu
 | `tmux: unknown option: prefix2` | tmux older than 1.6 | upgrade tmux |
 | Prompt is slow only in one project | a badge is spawning its runtime: `$version` was added back to a format, or `$style` is being used as a group style | `starship timings` in that directory names the module; `prompt-bench --fixture` reports the cost |
 | Badge is there but the version is not | that is the design: a version costs a runtime spawn per prompt | `versions` prints it for the current directory |
+| `✗ nvim 0.10.x is older than 0.11.2` | the package manager ships an old Neovim | install a newer one (`nvim` from GitHub releases, or a backports repository) |
+| `! no neovim plugins installed` | the submodule was never populated, or lazy.nvim could not reach the network | `git --git-dir=~/.dotfiles --work-tree=~ submodule update --init .config/nvim`, then `~/.config/setup.sh` |
+| mason cannot install a language server | `unzip` is missing, or the server needs a runtime (JDK, .NET, Ruby) that is not installed | `sudo apt-get install unzip`; the runtimes are listed in the Neovim section of [tutorial.md](./tutorial.md#neovim) |
+| `✗ /root/.config/nvim/init.lua` after a reset | the submodule was removed with the rest of the configuration | `git --git-dir=~/.dotfiles --work-tree=~ submodule update --init .config/nvim` |
 
 The `ZDOTDIR` block, for `/etc/zsh/zshenv`, is:
 
@@ -347,7 +394,9 @@ just a fallback that forwards to `~/.config/zsh/.zshenv`.
   match the window background. `starship.toml` carries the palette it draws
   with, but it cannot recolour the terminal it is drawn on.
 - **No plugin manager, no TPM.** Five repositories are cloned shallowly by
-  `setup.sh`; updating them is `git -C <dir> pull --ff-only`.
+  `setup.sh`; updating them is `git -C <dir> pull --ff-only`. Neovim is the one
+  exception: it uses lazy.nvim, because a language server stack is not
+  something a shell script should be responsible for.
 - **No global font on the Windows side.** For WSL, install the TTF in Windows.
 - **No changes outside `$HOME`**, except reading `/etc/zsh/zshenv` and (with
   sudo) the package manager.
