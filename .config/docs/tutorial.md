@@ -369,18 +369,18 @@ a headless install forever.
 ### Neovim and tmux together
 
 `numToStr/Navigator.nvim` moves the focus between Neovim and the neighbouring
-tmux pane with `<A-h/j/k/l>`. The Neovim half is configured here; the tmux
-half is a binding in `~/.tmux.conf`:
+tmux pane with `<A-h/j/k/l>`. It does the tmux half itself -- it runs
+`tmux select-pane` and refuses to move while a pane is zoomed -- and it
+detects tmux on its own, so nothing has to be added to `tmux.conf` for it.
 
-```tmux
-bind -n M-h send-keys -X select-pane -L
-bind -n M-j send-keys -X select-pane -D
-bind -n M-k send-keys -X select-pane -U
-bind -n M-l send-keys -X select-pane -R
-```
+What the tmux configuration does have is the usual `prefix + h/j/k/l` for
+moving between panes: the same gesture, for the focus that is in tmux rather
+than in the editor.
 
-Without the tmux side the keys do nothing, because tmux is what decides
-which pane receives them.
+The two halves are deliberately independent. A plugin that needed a tmux
+binding would put the editor's ergonomics at the mercy of the terminal
+configuration, and the binding would have to be kept in step with it by
+hand.
 
 ## Changing things safely
 
