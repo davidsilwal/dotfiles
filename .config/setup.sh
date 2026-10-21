@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-#  setup.sh - zsh + tmux terminal stack
+#  setup.sh - zsh + tmux + neovim terminal stack
 #
 #  Installs the tools the configuration needs, clones the vendored plugins
 #  (four for zsh, one for tmux), places the configuration, and verifies that
@@ -19,6 +19,7 @@
 #     ~/.config/.fresh/       pristine baseline (source for --fresh)
 #     ~/.config/zsh/          live zsh configuration
 #     ~/.config/tmux/         live tmux configuration
+#     ~/.config/nvim/         live neovim configuration (a git submodule)
 #     ~/.tmux.conf            loader for tmux < 3.2
 #     ~/.zshenv               fallback when ZDOTDIR is unset
 #
@@ -26,15 +27,21 @@
 #  inside them), both shims, leftover TPM directories (~/.tmux,
 #  ~/.local/share/tmux), the zsh caches, state and history, and old
 #  ~/.tmux.conf.bak.* files. The plugins are cloned again afterwards.
-#  Everything else under ~/.config is untouched.
+#  Everything else under ~/.config is untouched, ~/.config/nvim included:
+#  it is a submodule, so it is restored with
+#  `git --git-dir=~/.dotfiles --work-tree=~ submodule update --init .config/nvim`
+#  rather than from a baseline copy.
 # =============================================================================
 set -uo pipefail
 
 CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 ZSH_DIR="$CONFIG_HOME/zsh"
 TMUX_DIR="$CONFIG_HOME/tmux"
+NVIM_DIR="$CONFIG_HOME/nvim"
 BASELINE="$CONFIG_HOME/.fresh"
 BACKUP_DIR="$HOME/backups"
+DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+NVIM_DATA="$DATA_HOME/nvim"
 
 DO_PACKAGES=1
 CHECK_ONLY=0
@@ -97,21 +104,21 @@ packages_for() {
     case "$1" in
         apt)    printf '%s\n' zsh git curl fzf fd-find bat eza ripgrep zoxide \
                     neovim fontconfig fonts-noto-color-emoji \
-                    shellcheck starship less ;;
+                    shellcheck starship less unzip ;;
         pacman) printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
                     neovim fontconfig noto-fonts-emoji \
-                    shellcheck starship less ;;
+                    shellcheck starship less unzip ;;
         dnf)    printf '%s\n' zsh git curl fzf fd-find bat eza ripgrep zoxide \
                     neovim fontconfig google-noto-color-emoji-fonts \
-                    ShellCheck starship less ;;
+                    ShellCheck starship less unzip ;;
         zypper) printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
                     neovim fontconfig noto-coloremoji-fonts \
-                    ShellCheck starship less ;;
+                    ShellCheck starship less unzip ;;
         apk)    printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
                     neovim fontconfig noto-fonts-emoji \
-                    shellcheck starship less ;;
+                    shellcheck starship less unzip ;;
         brew)   printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
-                    neovim fontconfig shellcheck starship less ;;
+                    neovim fontconfig shellcheck starship less unzip ;;
     esac
 }
 
@@ -279,6 +286,76 @@ install_tmux_plugins() {
         fi
     done
     return "$failed"
+}
+
+# --- Neovim ------------------------------------------------------------------
+# The editor configuration is a git submodule of the dotfiles repository, so a
+# clone does not populate it: `git submodule update --init` does. The plugins
+# themselves are managed by lazy.nvim and live outside the configuration, in
+# ~/.local/share/nvim, so restoring the configuration does not re-download them.
+#
+# LazyVim needs Neovim 0.11.2 or newer; anything older is reported, not fixed,
+# because the version comes from the package manager.
+NVIM_MIN_VERSION=0.11.2
+
+nvim_version() {
+    nvim --version 2>/dev/null | head -1 | sed 's/^NVIM v//'
+}
+
+nvim_version_ok() {
+    local v
+    v=$(nvim_version)
+    [ -n "$v" ] || return 1
+    # Version-sort rather than pattern-match: 0.9 is older than 0.11.2, but a
+    # `0.1*` glob would call it newer.
+    local lowest
+    lowest=$(printf '%s\n%s\n' "$v" "$NVIM_MIN_VERSION" | sort -V | head -1)
+    [ "$lowest" = "$NVIM_MIN_VERSION" ]
+}
+
+install_nvim_config() {
+    step "Neovim configuration"
+    if [ -f "$NVIM_DIR/init.lua" ]; then
+        ok "config present: ${NVIM_DIR/#$HOME/~}"
+        return 0
+    fi
+    # A clone of the dotfiles does not fetch submodules; this is the step that
+    # was missing from the manual instructions.
+    if [ -d "$HOME/.dotfiles" ] &&
+       git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" \
+           submodule update --init .config/nvim >/dev/null 2>&1 &&
+       [ -f "$NVIM_DIR/init.lua" ]; then
+        ok "config restored from the submodule"
+        return 0
+    fi
+    err "no Neovim configuration at ${NVIM_DIR/#$HOME/~}"
+    info "populate it with:"
+    info "  git --git-dir=$HOME/.dotfiles --work-tree=$HOME submodule update --init .config/nvim"
+    info "or clone it directly:"
+    info "  git clone https://github.com/davidsilwal/nvim.git $NVIM_DIR"
+    return 1
+}
+
+install_nvim_plugins() {
+    step "Neovim plugins"
+    command -v nvim >/dev/null 2>&1 || { warn "nvim is not installed"; return 0; }
+    [ -f "$NVIM_DIR/init.lua" ] || { warn "no configuration, nothing to sync"; return 0; }
+
+    # lazy.nvim installs the plugins on the first start. Doing it here means
+    # the first real start is fast, and the download happens while the user is
+    # watching the installer rather than on the first keystroke. It is the
+    # slow step: about a hundred repositories and a gigabyte of tool servers.
+    local out rc start end
+    start=$(date +%s)
+    out=$(cd "$NVIM_DIR" && nvim --headless "+Lazy! sync" +qa 2>&1); rc=$?
+    end=$(date +%s)
+    if [ "$rc" -eq 0 ]; then
+        ok "plugins synced ($(( end - start ))s)"
+    else
+        warn "the plugin sync did not finish cleanly (rc=$rc)"
+        printf '%s\n' "$out" | tail -5 | sed 's/^/      /' >&2
+    fi
+    return 0
 }
 
 # --- Fresh install ------------------------------------------------------------
@@ -481,6 +558,35 @@ verify() {
         if command -v "$b" >/dev/null 2>&1; then ok "$b"; else warn "$b missing"; fi
     done
 
+    # Neovim: the version LazyVim needs, the configuration, and the plugins
+    # that lazy.nvim fetched. The plugin tree lives in the data directory, so
+    # it survives a reset of the configuration.
+    if command -v nvim >/dev/null 2>&1; then
+        if nvim_version_ok; then
+            ok "nvim $(nvim_version) (LazyVim needs >= $NVIM_MIN_VERSION)"
+        else
+            warn "nvim $(nvim_version) is older than $NVIM_MIN_VERSION, which LazyVim requires"
+        fi
+        check_file "$NVIM_DIR/init.lua"          || failed=1
+        check_file "$NVIM_DIR/lua/config/lazy.lua" || failed=1
+        check_file "$NVIM_DIR/lazy-lock.json"    || failed=1
+        local nplug ntools
+        nplug=$(ls "$NVIM_DATA/lazy" 2>/dev/null | wc -l)
+        if [ "$nplug" -gt 0 ]; then
+            ok "neovim plugins: $nplug"
+        else
+            warn "no neovim plugins installed (run: $0)"
+        fi
+        ntools=$(ls "$NVIM_DATA/mason/bin" 2>/dev/null | wc -l)
+        if [ "$ntools" -gt 0 ]; then
+            ok "neovim tools: $ntools (mason)"
+        else
+            warn "no mason tools installed yet (they arrive on the first start)"
+        fi
+    else
+        warn "nvim missing"
+    fi
+
     # Presence is not enough: an unpatched monospace family resolves fine but
     # draws the prompt separators as boxes. Count matches rather than `grep -q`,
     # which would trip over SIGPIPE under `set -o pipefail`.
@@ -611,7 +717,7 @@ while [ $# -gt 0 ]; do
     shift
 done
 
-printf '\n%s  ▌ zsh + tmux - setup%s\n' "$c_head" "$c_off"
+printf '\n%s  ▌ zsh + tmux + neovim - setup%s\n' "$c_head" "$c_off"
 [ "$CHECK_ONLY" -eq 1 ] && info "check-only mode: nothing will be changed"
 [ "$FRESH" -eq 1 ] && info "fresh mode: the current zsh + tmux config will be removed"
 
@@ -622,7 +728,7 @@ if [ "$FRESH" -eq 1 ]; then
     fresh_install || status=1
 elif [ "$CHECK_ONLY" -eq 0 ]; then
     step "Configuration"
-    for pair in "zsh:$ZSH_DIR" "tmux:$TMUX_DIR"; do
+    for pair in "zsh:$ZSH_DIR" "tmux:$TMUX_DIR" "nvim:$NVIM_DIR"; do
         name=${pair%%:*}; dir=${pair#*:}
         if [ -d "$dir" ]; then
             ok "$name present: ${dir/#$HOME/~}"
@@ -646,6 +752,8 @@ if [ "$CHECK_ONLY" -eq 0 ]; then
     install_fonts
     install_plugins || status=1
     install_tmux_plugins || status=1
+    install_nvim_config || status=1
+    install_nvim_plugins
 fi
 
 verify || status=1

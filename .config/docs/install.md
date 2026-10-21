@@ -2,7 +2,8 @@
 
 This is the from-scratch procedure: an empty machine, no dotfiles, nothing
 configured. It ends with a shell that starts clean in under 400 ms, a themed
-prompt, and tmux with the same palette.
+prompt, tmux with the same palette, and a LazyVim Neovim with its plugins
+installed.
 
 If the config is already installed and you only want to update or reset it, see
 [Updating](#updating) and [Resetting to the baseline](#resetting-to-the-baseline).
@@ -26,19 +27,22 @@ If the config is already installed and you only want to update or reset it, see
 | `sudo` (or a root shell) | only for the package step; nothing else needs it |
 | `git` | to clone the repository and the five vendored plugins |
 | `curl` | to download the Nerd Font when it is missing |
-| network | packages, plugins, font |
+| network | packages, plugins, font, and the Neovim plugins |
 | `unzip` **or** `python3` | to unpack the font archive (either one is enough) |
 | `bash` 3.2+ (5.0+ for `prompt-bench`) | `setup.sh` and `versions` need nothing newer; `prompt-bench` times with `EPOCHREALTIME`, and macOS still ships 3.2 as `/bin/bash`, so `brew install bash` if you want to measure |
 
-zsh, tmux, fzf, fd, bat, eza, ripgrep, zoxide, neovim and starship are
+zsh, tmux, fzf, fd, bat, eza, ripgrep, zoxide, neovim, unzip and starship are
 installed by the script; you do not need them beforehand. On Debian and
 Ubuntu, `fd` and `bat` are packaged as `fdfind` and `batcat`, so the script
 also creates `~/.local/bin/fd` and `~/.local/bin/bat` pointing at them.
 
+`unzip` is not only for the font: mason uses it to unpack the language servers
+it downloads, so a machine without it cannot install an LSP server.
+
 > **Back up what you have.** This repository is checked out with your home
 > directory as the working tree, so it writes `~/.zshenv`, `~/.tmux.conf`,
-> `~/.config/zsh/` and `~/.config/tmux/`. Anything already at those paths is
-> replaced.
+> `~/.config/zsh/`, `~/.config/tmux/` and `~/.config/nvim/`. Anything already at
+> those paths is replaced.
 
 ```bash
 mkdir -p ~/backups
@@ -66,6 +70,13 @@ The checkout puts these in place:
 ~/.config/.fresh/          pristine baseline for setup.sh --fresh
 ~/.config/setup.sh
 ~/.zshenv  ~/.tmux.conf    the two compatibility shims
+```
+
+`~/.config/nvim` is a **submodule** and is not populated by the checkout. The
+installer restores it (see step 2), but you can also do it by hand:
+
+```bash
+git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" submodule update --init .config/nvim
 ```
 
 If the checkout stops with *"would be overwritten by checkout"*, those files
@@ -101,16 +112,20 @@ It runs these steps in order and is safe to run again at any time:
 
 | Step | What it does |
 |---|---|
-| Configuration | checks `~/.config/zsh` and `~/.config/tmux` exist |
+| Configuration | checks `~/.config/zsh`, `~/.config/tmux` and `~/.config/nvim` exist |
 | Packages | installs the tools from the table in [Before you start](#before-you-start); retries once after `apt-get update` if the cache is stale; adds `tmux` only when the installed one is older than 3.2 |
 | Nerd Font | if `fc-list` cannot resolve `JetBrainsMono Nerd Font`, downloads the JetBrainsMono release into `~/.local/share/fonts` and runs `fc-cache` |
 | zsh plugins | shallow-clones four plugins into `~/.config/zsh/plugins/` |
 | tmux plugin | shallow-clones `tmux-resurrect` into `~/.config/tmux/plugins/` |
+| Neovim configuration | restores `~/.config/nvim` from the submodule when it is missing |
+| Neovim plugins | `nvim --headless "+Lazy! sync"` — the slow step, it downloads about a hundred plugins |
 | ZDOTDIR | checks that `/etc/zsh/zshenv` points zsh at `$XDG_CONFIG_HOME/zsh` |
-| Verification | syntax, silent start-up, `ZDOTDIR`, start-up budget, tmux config parse, tools, font, plugins, prompt cost, shellcheck |
+| Verification | syntax, silent start-up, `ZDOTDIR`, start-up budget, tmux config parse, tools, Neovim version, plugins and tools, font, plugins, prompt cost, shellcheck |
 
 A full run takes a couple of minutes on a fresh machine, almost all of it in
-the package manager.
+the package manager. The first run on a new machine also spends a few minutes
+in the Neovim plugin step, which downloads the plugin tree and the language
+servers mason manages.
 
 Useful flags:
 

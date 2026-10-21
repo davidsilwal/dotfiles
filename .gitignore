@@ -31,6 +31,17 @@
 .vim/
 .viminfo
 
+# Go toolchain state. The module cache is ~275 MB of downloaded source and
+# is owned by the go command, never by the configuration.
+go/pkg/
+go/bin/
+
+# Backups and working copies of the nvim configuration. setup.sh writes
+# these when it swaps a configuration in or out; the live tree is the
+# submodule at .config/nvim.
+.config/nvim.bak.*
+.config/nvim.mine/
+
 # Everything under .local/share is runtime state (tmux-continuum session
 # dumps, zoxide's database, lf history, man pages) - except the tracked
 # helper scripts in .local/share/bin.
