@@ -264,6 +264,8 @@ readline are not affected by any of this; they honour `~/.inputrc` instead.
 - `ZDOTDIR` resolving to `~/.config/zsh`
 - start-up time, best of three, against a 400 ms budget
 - the tmux configuration parsing on a throwaway socket
+- the Neovim version against the one LazyVim needs, the configuration files,
+  and the number of installed plugins and mason tools
 - the tools the config uses, and `shellcheck` on `setup.sh`
 
 It exits non-zero when anything fails, so it can run from a script or CI.
