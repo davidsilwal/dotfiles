@@ -233,12 +233,18 @@ fi
 head_ "8. Installer"
 
 if [ -x /root/.config/setup.sh ]; then
-    out=$(cd /root/.config && timeout 300 bash setup.sh --check 2>&1)
-    if printf '%s' "$out" | grep -q 'setup complete'; then
-        ok "setup.sh --check passes"
-    else
-        bad "setup.sh --check" "$(printf '%s' "$out" | grep -E '✗|error' | head -2 | tr '\n' ' ')"
-    fi
+    # The startup-time gate is load sensitive, so a busy machine can push a
+    # healthy shell over the budget. Retry once before calling it a failure.
+    for attempt in 1 2; do
+        out=$(cd /root/.config && timeout 300 bash setup.sh --check 2>&1)
+        if printf '%s' "$out" | grep -q 'setup complete'; then
+            ok "setup.sh --check passes"
+            break
+        fi
+        if [ "$attempt" = "2" ]; then
+            bad "setup.sh --check" "$(printf '%s' "$out" | grep -E '✗' | head -2 | tr '\n' ' ')"
+        fi
+    done
 else
     bad "setup.sh" "missing"
 fi
