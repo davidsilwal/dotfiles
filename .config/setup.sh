@@ -436,10 +436,11 @@ fresh_install() {
     mkdir -p "$TMUX_DIR" && cp -a "$BASELINE/tmux/." "$TMUX_DIR/" || return 1
     cp -a "$BASELINE/home/.tmux.conf" "$HOME/.tmux.conf" || return 1
     cp -a "$BASELINE/home/.zshenv" "$HOME/.zshenv" || return 1
+    cp -a "$BASELINE/home/.bashrc" "$HOME/.bashrc" || return 1
 
     ok "zsh   -> ${ZSH_DIR/#$HOME/~}"
     ok "tmux  -> ${TMUX_DIR/#$HOME/~}"
-    ok "shims -> ~/.tmux.conf, ~/.zshenv"
+    ok "shims -> ~/.tmux.conf, ~/.zshenv, ~/.bashrc"
     return 0
 }
 
@@ -485,6 +486,7 @@ verify() {
     check_file "$TMUX_DIR/tmux.conf" || failed=1
     check_file "$HOME/.tmux.conf" || failed=1
     check_file "$HOME/.zshenv"    || failed=1
+    check_file "$HOME/.bashrc"    || failed=1
     check_file "$ZSH_DIR/scripts/prompt-bench.sh" || failed=1
     check_file "$ZSH_DIR/scripts/versions.sh"     || failed=1
 

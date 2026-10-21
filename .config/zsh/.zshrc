@@ -243,6 +243,13 @@ alias ...='cd ../..'
 alias reload='exec zsh'
 alias path='print -l $path'
 
+# The dotfiles repository is a bare clone with $HOME as its work tree, so
+# every dotfile is managed through it: `dotfiles status`, `dotfiles add ...`,
+# `dotfiles checkout`.
+if [[ -d $HOME/.dotfiles ]]; then
+  alias dotfiles='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
+fi
+
 # ---------------------------------------------------------------------------
 #  Small helpers
 # ---------------------------------------------------------------------------

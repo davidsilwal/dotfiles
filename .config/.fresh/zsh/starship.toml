@@ -13,9 +13,14 @@
 # which is tighter than a busy filesystem can answer -- a cold cache or a
 # concurrent write (a compiler, a package install) pushed the listing past it
 # and produced a spurious "Scanning current directory timed out" warning for a
-# scan that would have finished a moment later. 100 ms keeps the backstop while
-# tolerating a stalled disk.
-scan_timeout = 100
+# scan that would have finished a moment later. 100 ms kept the backstop while
+# tolerating a stalled disk, but not a filesystem root: reading / has to cross
+# every mount point there (/proc, /sys, /dev, /run), and the cold-cache listing
+# takes longer than that, so `cd ..` into / still printed the warning. The cap
+# is not a delay -- the prompt returns as soon as the listing is done -- so the
+# only cost of a larger number is how long a genuinely hung scan may take
+# before being abandoned: 500 ms, well under the point where it is noticed.
+scan_timeout = 500
 
 format = """
 [](red)\

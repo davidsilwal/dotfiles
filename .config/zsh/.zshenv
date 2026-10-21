@@ -23,6 +23,18 @@ path=(
 )
 export PATH
 
+# --- Colours -----------------------------------------------------------------
+# .zshrc hands LS_COLORS to the completion menu (zstyle list-colors) and
+# plain `ls` uses it too. Ubuntu ships it in /etc/bash.bashrc, which zsh
+# never reads, so populate it here.
+if [[ -z ${LS_COLORS:-} && -x /usr/bin/dircolors ]]; then
+  if [[ -r $HOME/.dircolors ]]; then
+    eval "$(dircolors -b "$HOME/.dircolors")"
+  else
+    eval "$(dircolors -b)"
+  fi
+fi
+
 # --- Programs the rest of the config expects --------------------------------
 if command -v nvim >/dev/null 2>&1; then
   export EDITOR=nvim

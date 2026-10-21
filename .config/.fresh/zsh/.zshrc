@@ -7,9 +7,11 @@
 #
 #  Startup: ~150-300 ms with the four vendored plugins and the starship prompt
 #  (fast-syntax-highlighting ~40 ms; the prompt itself ~15-25 ms median, of
-#  which ~8-15 ms is spawning starship -- measure with `prompt-bench` rather
-#  than trusting a single reading). The gate in setup.sh is 400 ms; anything
-#  slower belongs in a command, not in this file. Check with: zsh -ic exit
+#  which ~8-15 ms is spawning starship -- language badges add nothing on top,
+#  because no badge format prints a version; see starship.toml). Measure with
+#  `prompt-bench` rather than trusting a single reading. The gate in setup.sh
+#  is 400 ms; anything slower belongs in a command, not in this file. Check
+#  with: zsh -ic exit
 # =============================================================================
 
 # Nothing below is useful to a script.
@@ -184,6 +186,13 @@ if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/prompt-bench.sh ]]; then
   alias prompt-bench="${ZDOTDIR:-$HOME/.config/zsh}/scripts/prompt-bench.sh"
 fi
 
+# The badges name the toolchain but not its version, because printing it costs
+# a runtime spawn per prompt. `versions` is where that went: the same manifests
+# the badges match on, read on demand.
+if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/versions.sh ]]; then
+  alias versions="${ZDOTDIR:-$HOME/.config/zsh}/scripts/versions.sh"
+fi
+
 # Keep the terminal title on the current directory.
 _zs_title() { print -Pn '\e]0;%~\a' }
 precmd_functions+=(_zs_title)
@@ -233,6 +242,13 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias reload='exec zsh'
 alias path='print -l $path'
+
+# The dotfiles repository is a bare clone with $HOME as its work tree, so
+# every dotfile is managed through it: `dotfiles status`, `dotfiles add ...`,
+# `dotfiles checkout`.
+if [[ -d $HOME/.dotfiles ]]; then
+  alias dotfiles='git --git-dir=$HOME/.dotfiles --work-tree=$HOME'
+fi
 
 # ---------------------------------------------------------------------------
 #  Small helpers

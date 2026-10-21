@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  dotfiles-verify - health check for this host
+#
+#  Checks the shell setup, the toolchain, the zsh/tmux/nvim configuration and
+#  the state of the dotfiles repository. Read-only: it changes nothing.
+#
+#      dotfiles-verify
+#      dotfiles-verify --quiet     # only show failures
+# =============================================================================
+set -uo pipefail
+
+QUIET=0
+[ "${1:-}" = "--quiet" ] && QUIET=1
+
+FAIL=0
+PASS=0
+
+ok()  { PASS=$((PASS+1)); [ $QUIET -eq 1 ] || printf "  \033[32mPASS\033[0m  %s\n" "$1"; }
+bad() { FAIL=$((FAIL+1)); printf "  \033[31mFAIL\033[0m  %s\n         -> %s\n" "$1" "${2:-}"; }
+head_() { printf "\n\033[1m== %s ==\033[0m\n" "$1"; }
+
+# check <description> <command...>
+check() {
+    if "$@" >/dev/null 2>&1; then ok "$*"; else bad "$*" "command failed"; fi
+}
+
+# file_exists <desc> <path>
+file_exists() { [ -r "$2" ] && ok "$1" || bad "$1" "missing: $2"; }
+
+G=/root/.dotfiles
+git_do() { git --git-dir=$G --work-tree=/root "$@"; }
+
+# -----------------------------------------------------------------------------
+head_ "1. Shell"
+
+[ "$(getent passwd root | cut -d: -f7)" = "/usr/bin/zsh" ] \
+    && ok "root's login shell is zsh" \
+    || bad "root's login shell" "$(getent passwd root | cut -d: -f7)"
+
+# The interactive hand-off: a login bash and a plain interactive bash both
+# have to end up in zsh, while `bash -c` and #!/bin/bash scripts must not.
+for mode in "bash -l" "bash -i"; do
+    out=$(timeout 40 script -qec "$mode" /dev/null 2>&1 | tr -d '\000')
+    if printf '%s' "$out" | grep -qE '❯|󰕈'; then
+        ok "$mode hands off to zsh"
+    else
+        bad "$mode hands off to zsh" "no zsh prompt"
+    fi
+done
+
+bash -c 'exit 0' >/dev/null 2>&1 \
+    && ok "non-interactive bash still works" \
+    || bad "non-interactive bash" "broken"
+
+printf '#!/bin/bash\necho ok\n' > /tmp/.dv_shebang_test
+chmod +x /tmp/.dv_shebang_test
+/tmp/.dv_shebang_test 2>/dev/null | grep -q ok \
+    && ok "#!/bin/bash scripts unaffected" \
+    || bad "#!/bin/bash scripts" "broken"
+rm -f /tmp/.dv_shebang_test
+
+file_exists "zsh config present"        /root/.config/zsh/.zshrc
+file_exists "zsh env present"           /root/.config/zsh/.zshenv
+file_exists "zsh fallback ~/.zshenv"    /root/.zshenv
+file_exists "bash hand-off ~/.bashrc"   /root/.bashrc
+file_exists "starship config"           /root/.config/zsh/starship.toml
+[ -d /root/.local/state/zsh ] && ok "history dir exists" || bad "history dir" "missing"
+[ -f /root/.cache/zsh/zcompdump ] && ok "compinit cache built" || bad "zcompdump" "missing"
+
+# -----------------------------------------------------------------------------
+head_ "2. No startup errors"
+
+out=$(timeout 40 script -qec 'zsh -ic "true"' /dev/null 2>&1 | tr -d '\000')
+if [ -z "$(printf '%s' "$out" | grep -viE '^\s*$')" ]; then
+    ok "interactive zsh starts silently"
+else
+    bad "interactive zsh startup" "$(printf '%s' "$out" | head -2 | tr '\n' ' ')"
+fi
+
+out=$(timeout 40 script -qec 'zsh -lc "true"' /dev/null 2>&1 | tr -d '\000')
+if [ -z "$(printf '%s' "$out" | grep -viE '^\s*$')" ]; then
+    ok "login zsh starts silently"
+else
+    bad "login zsh startup" "$(printf '%s' "$out" | head -2 | tr '\n' ' ')"
+fi
+
+for f in /root/.config/zsh/.zshenv /root/.config/zsh/.zshrc; do
+    zsh -n "$f" 2>/dev/null && ok "syntax: ${f##*/}" || bad "syntax: $f" "parse error"
+done
+
+# -----------------------------------------------------------------------------
+head_ "3. Toolchain"
+
+export PATH="/root/.local/bin:$PATH"
+for t in zsh git curl fzf fd bat eza rg zoxide starship nvim lf trash-put \
+         urlview lazygit fontconfig shellcheck python3 pip3 unzip zip; do
+    command -v $t >/dev/null 2>&1 && ok "$t -> $(command -v $t)" || bad "$t" "not installed"
+done
+for s in ctpv ctpvclear ctpvquit dotfiles-verify; do
+    [ -x "/usr/local/bin/$s" ] && ok "$s" || bad "$s" "missing"
+done
+[ -d /usr/local/share/fonts/jetbrains-mono-nerd ] \
+    && ok "JetBrainsMono Nerd Font installed" || bad "Nerd Font" "missing"
+
+# opencode and pi must be reachable from a clean login shell
+for b in opencode pi; do
+    env -i HOME=/root TERM=xterm zsh -l -c "command -v $b" >/dev/null 2>&1 \
+        && ok "$b on PATH in a clean login zsh" || bad "$b on PATH" "missing"
+done
+for b in cargo rustc; do
+    env -i HOME=/root TERM=xterm zsh -l -c "command -v $b" >/dev/null 2>&1 \
+        && ok "$b on PATH in a clean login zsh" || bad "$b on PATH" "missing"
+done
+
+# -----------------------------------------------------------------------------
+head_ "4. zsh configuration"
+
+# LS_COLORS has to exist: .zshrc hands it to the completion menu.
+n=$(env -i HOME=/root TERM=xterm zsh -l -c 'echo ${#LS_COLORS}' 2>/dev/null)
+[ "${n:-0}" -gt 100 ] 2>/dev/null && ok "LS_COLORS populated (${n} chars)" \
+    || bad "LS_COLORS" "empty - completion menu has no colours"
+
+# The dotfiles alias is how the repository is managed.
+out=$(timeout 40 script -qec 'zsh -ic "alias dotfiles"' /dev/null 2>&1 | tr -d '\000')
+printf '%s' "$out" | grep -q '.dotfiles' && ok "dotfiles alias defined" \
+    || bad "dotfiles alias" "missing"
+
+# The aliases the config defines.
+for a in ls ll la lt grep df; do
+    out=$(timeout 40 script -qec "zsh -ic 'alias $a'" /dev/null 2>&1 | tr -d '\000')
+    printf '%s' "$out" | grep -q "^$a=" && ok "alias: $a" || bad "alias $a" "missing"
+done
+
+# Widgets the plugins provide.
+out=$(timeout 40 script -qec 'zsh -ic "zle -l"' /dev/null 2>&1 | tr -d '\000' | tr ' ' '\n')
+for w in autosuggest-accept autosuggest-toggle; do
+    printf '%s' "$out" | grep -qx "$w" && ok "widget: $w" || bad "widget $w" "missing"
+done
+
+# History is read back at start-up (it is set in .zshenv, not .zshrc).
+env -i HOME=/root TERM=xterm zsh -l -c 'echo "$HISTFILE"' 2>/dev/null | grep -q 'zsh/history' \
+    && ok "HISTFILE points at the state dir" || bad "HISTFILE" "not set correctly"
+
+# The vendored plugins have to be present.
+for p in zsh-autosuggestions fast-syntax-highlighting zsh-completions fzf-tab; do
+    [ -d "/root/.config/zsh/plugins/$p" ] && ok "zsh plugin: $p" || bad "zsh plugin $p" "missing"
+done
+
+# -----------------------------------------------------------------------------
+head_ "5. tmux configuration"
+
+# The tmux config is a single self-contained file: no TPM, no plugin
+# downloads, nothing to install beyond tmux itself.
+file_exists "tmux config" /root/.config/tmux/tmux.conf
+file_exists "~/.tmux.conf loader" /root/.tmux.conf
+grep -q 'source-file ~/.config/tmux/tmux.conf' /root/.tmux.conf \
+    && ok "loader sources the XDG config" || bad "loader" "wrong target"
+
+grep -q 'set -g extended-keys on' /root/.config/tmux/tmux.conf \
+    && ok "extended-keys on in the config" || bad "extended-keys" "not in the config"
+grep -q 'extended-keys-format csi-u' /root/.config/tmux/tmux.conf \
+    && ok "extended-keys-format csi-u in the config" || bad "extended-keys-format" "not in the config"
+
+# A fresh server has to come up clean and pick the options up.
+tmux -L dvscratch kill-server >/dev/null 2>&1
+err=$(tmux -L dvscratch -f /root/.tmux.conf new-session -d -s dv 2>&1)
+sleep 1
+[ -z "$err" ] && ok "fresh tmux server starts cleanly" || bad "fresh tmux server" "$err"
+v=$(tmux -L dvscratch show-options -g extended-keys 2>/dev/null | awk '{print $2}')
+[ "$v" = "on" ] && ok "fresh server: extended-keys on" || bad "fresh server extended-keys" "$v"
+v=$(tmux -L dvscratch show-options -g extended-keys-format 2>/dev/null | awk '{print $2}')
+[ "$v" = "csi-u" ] && ok "fresh server: csi-u" || bad "fresh server format" "$v"
+tmux -L dvscratch kill-server >/dev/null 2>&1
+
+# A scratch repo inside the worktree is tolerated, but its content has to
+# match what the canonical repository tracks.
+if [ -d /root/.config/tmux/.git ]; then
+    ok "scratch repo present in .config/tmux (tolerated)"
+    sync=1
+    for f in tmux.conf .gitignore; do
+        a=$(git -C /root/.config/tmux show "HEAD:$f" 2>/dev/null | md5sum | cut -d' ' -f1)
+        b=$(git_do show "master:.config/tmux/$f" 2>/dev/null | md5sum | cut -d' ' -f1)
+        [ "$a" = "$b" ] || { printf "         -> %s differs from the dotfiles repo\n" "$f"; sync=0; }
+    done
+    [ "$sync" = "1" ] && ok "scratch repo content == dotfiles repo content" \
+        || bad "scratch repo drift" "differs from the dotfiles repo"
+else
+    ok "no scratch repo in .config/tmux"
+fi
+
+# -----------------------------------------------------------------------------
+head_ "6. Neovim"
+
+[ -r /root/.config/nvim/init.lua ] && ok "nvim init.lua" || bad "nvim init.lua" "missing"
+[ -r /root/.config/nvim/lazy-lock.json ] && ok "nvim lazy-lock.json" || bad "lazy-lock.json" "missing"
+n=$(ls /root/.local/share/nvim/lazy 2>/dev/null | wc -l)
+[ "$n" -gt 30 ] && ok "nvim plugins installed ($n)" || bad "nvim plugins" "only $n"
+err=$(timeout 120 nvim --headless -c 'qa!' 2>&1 | grep -viE '^\s*$' | head -3)
+[ -z "$err" ] && ok "nvim starts with no errors" || bad "nvim startup" "$(printf '%s' "$err" | head -1)"
+
+# -----------------------------------------------------------------------------
+head_ "7. Repository"
+
+[ -d "$G" ] && ok "bare repo at ~/.dotfiles" || bad "~/.dotfiles" "missing"
+n=$(git_do status --porcelain | wc -l)
+[ "$n" = "0" ] && ok "worktree clean" || bad "worktree" "$n modified paths"
+n=$(git_do submodule status | grep -c '^[+-]')
+[ "$n" = "0" ] && ok "all submodules at their pinned commits" \
+    || bad "submodules" "$(git_do submodule status | grep '^[+-]')"
+n=$(git_do add -A --dry-run . 2>/dev/null | wc -l)
+[ "$n" = "0" ] && ok "'dotfiles add .' is a no-op" || bad "'dotfiles add .'" "$n paths would be added"
+
+# Credentials and tool state must never be committable.
+for p in .config/gh/hosts.yml .pi/agent/auth.json .config/manicode/settings.json \
+         .cargo .cache .local/share/nvim .dotfiles .tmux/plugins .ssh; do
+    git_do check-ignore -q "$p" 2>/dev/null && ok "ignored: $p" || bad "not ignored: $p" "leak risk"
+done
+for p in .config/gh/hosts.yml .pi/agent/auth.json .config/manicode/device-key.json .dotfiles; do
+    git_do ls-files --error-unmatch "$p" >/dev/null 2>&1 && bad "tracked secret: $p" "LEAK" \
+        || ok "not tracked: $p"
+done
+
+# The local commits have to be on the fork.
+if git ls-remote https://github.com/davidsilwal/dotfiles.git refs/heads/master >/dev/null 2>&1; then
+    L=$(git_do rev-parse master)
+    R=$(git ls-remote https://github.com/davidsilwal/dotfiles.git refs/heads/master | cut -f1)
+    [ "$L" = "$R" ] && ok "fork is in sync with the local repository" \
+        || bad "fork out of sync" "local ${L:0:8} remote ${R:0:8}"
+fi
+
+# -----------------------------------------------------------------------------
+head_ "8. Installer"
+
+if [ -x /root/.config/setup.sh ]; then
+    out=$(cd /root/.config && timeout 300 bash setup.sh --check 2>&1)
+    if printf '%s' "$out" | grep -q 'setup complete'; then
+        ok "setup.sh --check passes"
+    else
+        bad "setup.sh --check" "$(printf '%s' "$out" | grep -E '✗|error' | head -2 | tr '\n' ' ')"
+    fi
+else
+    bad "setup.sh" "missing"
+fi
+
+# -----------------------------------------------------------------------------
+printf "\n\033[1m==========================================================\033[0m\n"
+printf "  \033[32m%d passed\033[0m" "$PASS"
+[ "$FAIL" -gt 0 ] && printf ", \033[31m%d failed\033[0m" "$FAIL" || printf ", 0 failed"
+printf "\n\033[1m==========================================================\033[0m\n"
+
+exit $((FAIL > 0))
