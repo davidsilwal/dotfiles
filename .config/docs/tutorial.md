@@ -90,6 +90,7 @@ defined above it.
 | `zsh/plugins/` | four shallow clones, created by `setup.sh`, ignored by git |
 | `tmux/tmux.conf` | one file: prefix, panes, status bar, keys, resurrect hook |
 | `tmux/plugins/` | tmux-resurrect clone, ignored by git |
+| `nvim/` | LazyVim configuration, a submodule: extras, options, keymaps, lockfile |
 | `.fresh/` | pristine baseline used by `setup.sh --fresh` |
 | `setup.sh` | installer and verifier |
 | `~/.zshenv`, `~/.tmux.conf` | compatibility shims for old zsh/tmux |
@@ -97,7 +98,8 @@ defined above it.
 
 State lives outside the config on purpose: history in
 `~/.local/state/zsh/history`, completion caches in `~/.cache/zsh`, tmux
-snapshots in `~/.local/state/tmux/resurrect`. `setup.sh --fresh` deletes the
+snapshots in `~/.local/state/tmux/resurrect`, the Neovim plugin tree and the
+mason toolchain in `~/.local/share/nvim`. `setup.sh --fresh` deletes the
 configuration directories but not your history or saved sessions.
 
 ## `.zshrc`, stage by stage
@@ -237,6 +239,149 @@ Two design decisions:
 Note that `tmux.conf` lives in `~/.config/tmux/`, read by tmux 3.2+. The
 tracked `~/.tmux.conf` is a two-line loader for older builds.
 
+## Neovim
+
+The editor configuration is a **submodule** at `~/.config/nvim`, pointing at
+the `lazyvim` branch of [davidsilwal/nvim](https://github.com/davidsilwal/nvim).
+It is the one part of this repository that is not a plain directory, because
+an editor configuration has its own release rhythm: plugins are pinned in a
+lockfile, and the editor config is updated on its own schedule rather than
+with the shell.
+
+The configuration itself is [LazyVim](https://lazyvim.github.io) -- the
+official starter template plus the extras that were wanted on top of it. That
+is a deliberate choice, and worth stating plainly: a hand-rolled Neovim
+configuration is a project that never finishes. LazyVim is a maintained
+distribution of the same defaults, and the parts of it that are worth
+changing are meant to be changed in small, local files rather than by editing
+someone else's plugin.
+
+### The file map
+
+| Path | Role |
+|---|---|
+| `~/.config/nvim/lua/config/lazy.lua` | lazy.nvim setup: what is loaded, when, and with which options |
+| `~/.config/nvim/lua/extras.lua` | the LazyVim extras that are switched on |
+| `~/.config/nvim/lua/config/{options,keymaps,autocmds}.lua` | your options, your keymaps, your autocmds |
+| `~/.config/nvim/lua/plugins/` | your own plugin specs (mason tools, themes, extra plugins) |
+| `~/.config/nvim/lazy-lock.json` | every plugin pinned to a commit |
+| `~/.local/share/nvim/` | the plugin tree, the mason tools and the treesitter parsers |
+
+The split between `lua/config/` and `lua/plugins/` is LazyVim's: `config/` is
+loaded on the `VeryLazy` event and is where you put your own settings;
+`plugins/` is where a plugin *spec* goes, with its own options and keymaps.
+
+### The import order is not cosmetic
+
+LazyVim checks the order of the imports in `lazy.lua` and warns when it is
+wrong:
+
+```lua
+spec = {
+  { "LazyVim/LazyVim", import = "lazyvim.plugins" },  -- the distribution
+  { import = "extras" },                              -- the extras we enable
+  { import = "plugins" },                             -- our own specs
+},
+```
+
+The extras have to come before our own specs because an extra is a plugin
+spec like any other: if our spec is parsed first, the extra's options are
+merged into the wrong one. This is why the extras live in `lua/extras.lua`
+rather than in `lua/plugins/extras.lua` -- a file under `lua/plugins/` is
+imported *after* every other plugin spec, which is exactly the wrong place for
+an extra.
+
+### One of each
+
+Several LazyVim extras are mutually exclusive, because they provide the same
+thing in different ways:
+
+| Slot | Chosen | Alternatives |
+|---|---|---|
+| File finder | `snacks.picker` | `telescope`, `fzf-lua` |
+| File explorer | `snacks.explorer` | `neo-tree` |
+| Completion | `blink.cmp` | `nvim-cmp` |
+| Start screen | `snacks` dashboard | `alpha-nvim`, `dashboard-nvim` |
+
+The alternatives are listed as comments where they would go, so swapping one
+is a two-line change: comment the current import out, uncomment the other one.
+Two extras are switched off for a different reason: `editor.aerial` and
+`editor.refactoring` need Neovim 0.12, and this configuration runs on 0.11.
+`editor.outline` covers the symbol outline in the meantime.
+
+### What mason manages, and what it does not
+
+`mason` owns the things that are not plugins: language servers, formatters,
+linters and debug adapters. The list is in `lua/plugins/mason.lua`, and it
+deliberately contains only tools that no enabled extra already asks for --
+requesting the same package from two places at once makes mason abort with
+"Package is already installing" and the tool ends up half-installed.
+
+The servers themselves come from the language extras: enable
+`lang.python` and mason installs `pyright` the next time Neovim starts.
+
+Two things are needed for that to work on a fresh machine, and the installer
+now takes care of both:
+
+- `unzip`, because most language servers ship as a zip archive. Without it
+  mason cannot install anything, and the failure is silent enough to look
+  like a network problem.
+- A runtime, for the servers that need one. `jdtls` needs a JDK, `csharp-ls`
+  needs the .NET SDK, `ruby-lsp` needs `gem`. Those language extras are
+  therefore commented out in `lua/extras.lua` with the requirement named.
+
+### Where the state lives
+
+The configuration is small and the state is large: the plugin tree, the mason
+toolchain and the treesitter parsers are several gigabytes and live in
+`~/.local/share/nvim`. That is the reason `--fresh` does not touch
+`~/.config/nvim`: a reset of the shell configuration should not cost you a
+re-download of the editor, and a submodule is restored from the repository
+rather than from a baseline copy anyway.
+
+The lockfile is the other half of that story. `lazy-lock.json` pins every
+plugin to a commit, so the tree you test is the tree the next machine gets.
+Updating it is the normal loop:
+
+```bash
+cd ~/.config/nvim
+nvim --headless '+Lazy! update' +qa
+git commit -am 'chore: update the lockfile' && git push
+```
+
+and the pointer in the dotfiles repository follows (see
+[install.md](./install.md#updating)).
+
+### Copilot needs one command
+
+The Copilot extras are enabled, and copilot.lua authenticates once:
+
+```bash
+nvim
+:Copilot auth
+```
+
+Until that has run, the completion source stays silent and the chat panel
+(`<leader>aa`) reports that it is not signed in. The install step is disabled
+on purpose: `copilot.lua`'s build runs an interactive login, which would block
+a headless install forever.
+
+### Neovim and tmux together
+
+`numToStr/Navigator.nvim` moves the focus between Neovim and the neighbouring
+tmux pane with `<A-h/j/k/l>`. The Neovim half is configured here; the tmux
+half is a binding in `~/.tmux.conf`:
+
+```tmux
+bind -n M-h send-keys -X select-pane -L
+bind -n M-j send-keys -X select-pane -D
+bind -n M-k send-keys -X select-pane -U
+bind -n M-l send-keys -X select-pane -R
+```
+
+Without the tmux side the keys do nothing, because tmux is what decides
+which pane receives them.
+
 ## Changing things safely
 
 The loop for every edit:
@@ -296,6 +441,19 @@ re-enable `detect_extensions`; that is the tree walk this configuration removed.
 
 **A tmux binding** -- add it to `tmux/tmux.conf`, `prefix + r`, then test it.
 `tmux list-keys | grep <key>` proves it took.
+
+**A Neovim extra** -- add the import to `lua/extras.lua` (not to
+`lua/plugins/`), then run `nvim --headless '+Lazy! sync' +qa` and open the
+editor. `:LazyExtras` lists everything that is available with a one-key
+toggle, and it is the fastest way to see what a feature would replace.
+
+**A Neovim keymap** -- add it to `lua/config/keymaps.lua`. That file is
+loaded on the `VeryLazy` event, so it costs nothing at start-up. Check it
+took with `:verbose nmap <leader>x`.
+
+**A Neovim plugin** -- add a spec to `lua/plugins/<name>.lua` with its own
+`opts`, and let lazy.nvim decide when it loads. A plugin with an `event`, a
+`cmd` or `keys` is loaded on demand and costs nothing until it is used.
 
 ## Measuring instead of guessing
 
@@ -367,6 +525,17 @@ Each one is a small experiment with an observable result. Run
    shell, see it print, then run `~/.config/setup.sh --check`: start-up is no
    longer silent and the check fails. Remove the line and it passes again.
 
+7. **Break the Neovim plugin tree.** Move `~/.local/share/nvim/lazy` aside
+   and start Neovim: lazy.nvim reinstalls it on the first start, which is a
+   minute of downloading. Move it back afterwards -- the point of the
+   exercise is that the configuration is small and the state is disposable,
+   and the lockfile means the tree you get back is the one you had.
+
+8. **Break the import order on purpose.** Move `{ import = "extras" }` below
+   `{ import = "plugins" }` in `lua/config/lazy.lua` and start Neovim: the
+   warning about the order appears. It is the one warning in this
+   configuration that is worth reading.
+
 ## Glossary
 
 | Term | Meaning here |
@@ -381,3 +550,8 @@ Each one is a small experiment with an observable result. Run
 | bare repository | git directory without a work tree of its own; here it is `~/.dotfiles` and the work tree is `$HOME` |
 | vendored plugin | a shallow clone committed to no lockfile and updated with `git pull --ff-only` |
 | spawn floor | cost of starting `starship` at all, measured by `prompt-bench` as `bare` |
+| submodule | a repository checked out inside another one; here `~/.config/nvim` inside `~/.dotfiles` |
+| LazyVim | the maintained Neovim distribution this configuration is built on: a plugin set, a set of defaults, and a way to extend both |
+| extra | a ready-made LazyVim feature pack (a picker, a debugger, a language), enabled by importing it |
+| lazy.nvim | the plugin manager Neovim uses here: it clones the plugins, pins them in `lazy-lock.json`, and loads them on demand |
+| mason | the manager for the things that are not plugins: language servers, formatters, linters, debug adapters |

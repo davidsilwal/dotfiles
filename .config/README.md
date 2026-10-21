@@ -1,27 +1,33 @@
 # ~/.config
 
-Terminal-centric dotfiles: zsh and tmux.
+Terminal-centric dotfiles: zsh, tmux and Neovim.
 
 | Directory | What it is |
 |---|---|
 | [`zsh/`](./zsh/) | Shell configuration: history, completion, bindings, Starship, fzf, zoxide |
 | [`zsh/scripts/`](./zsh/scripts/) | `prompt-bench` - median/p90 prompt latency against the spawn floor; `versions` - the toolchain versions the badges do not print |
 | [`tmux/`](./tmux/) | Native tmux 3.2+ configuration: prefix, panes, status bar, key bindings |
+| [`nvim/`](./nvim/) | LazyVim configuration (a submodule): extras, options, keymaps, plugin lockfile |
 | [`.fresh/`](./.fresh/) | Pristine baseline used by `setup.sh --fresh` |
 | [`setup.sh`](./setup.sh) | Installer/verifier for all of the above |
 | [`docs/`](./docs/) | [install.md](./docs/install.md) for a fresh machine, [tutorial.md](./docs/tutorial.md) for how it works |
 
-Both configs are self-contained: no plugin manager, no TPM, no network access
-on start-up. A missing optional tool (`starship`, `fzf`, `zoxide`, `eza`)
-removes its feature and nothing else — the same is true of the four vendored
-zsh plugins and tmux-resurrect.
+The shell and tmux configs are self-contained: no plugin manager, no TPM, no
+network access on start-up. A missing optional tool (`starship`, `fzf`,
+`zoxide`, `eza`) removes its feature and nothing else — the same is true of
+the four vendored zsh plugins and tmux-resurrect.
+
+Neovim is the exception, and it is a deliberate one: an editor configuration
+with a language server stack is not something a shell script should be
+responsible for. It uses [LazyVim](https://lazyvim.github.io) with lazy.nvim
+and mason, and its plugins are pinned in `lazy-lock.json`.
 
 ## Documentation
 
 | Document | Read it when |
 |---|---|
 | [docs/install.md](./docs/install.md) | setting up a new machine, updating, resetting, or fixing a broken prompt |
-| [docs/tutorial.md](./docs/tutorial.md) | learning how the boot chain, `.zshrc`, prompt and tmux fit together |
+| [docs/tutorial.md](./docs/tutorial.md) | learning how the boot chain, `.zshrc`, prompt, tmux and Neovim fit together |
 
 ## Quick start
 
@@ -29,8 +35,8 @@ zsh plugins and tmux-resurrect.
 ~/.config/setup.sh
 ```
 
-That installs the tools the config needs, clones the plugins, places the zsh
-and tmux configuration, checks that `/etc/zsh/zshenv` points zsh at
+That installs the tools the config needs, clones the plugins, places the zsh,
+tmux and Neovim configuration, checks that `/etc/zsh/zshenv` points zsh at
 `~/.config/zsh`, and verifies the result. Run it again any time: every step is
 idempotent and only changes what has drifted.
 
@@ -49,7 +55,7 @@ compiled, and nothing runs at start-up to fetch anything.
 
 | Package manager | Packages |
 |---|---|
-| `apt` | `zsh` `git` `curl` `fzf` `fd-find` `bat` `eza` `ripgrep` `zoxide` `neovim` `fontconfig` `fonts-noto-color-emoji` `shellcheck` `starship` `less` |
+| `apt` | `zsh` `git` `curl` `fzf` `fd-find` `bat` `eza` `ripgrep` `zoxide` `neovim` `fontconfig` `fonts-noto-color-emoji` `shellcheck` `starship` `less` `unzip` |
 | `pacman` | the same set under Arch names (`fd`, `noto-fonts-emoji`, …) |
 | `dnf` | `fd-find`, `google-noto-color-emoji-fonts`, `ShellCheck`, … |
 | `zypper` | `fd`, `noto-coloremoji-fonts`, `ShellCheck`, … |
@@ -58,6 +64,9 @@ compiled, and nothing runs at start-up to fetch anything.
 
 `tmux` is only requested when the installed one is older than 3.2; a newer
 build (as `/usr/local/bin/tmux` here) is left alone.
+
+`unzip` is not decoration: mason unpacks the language servers it downloads
+with it, and without it no server can be installed.
 
 **Nerd Font.** The prompt separators, the fzf previews and the tmux bar need a
 patched font. `setup.sh` checks `fc-list` for `JetBrainsMono Nerd Font` and,
@@ -189,6 +198,49 @@ Unless `--no-backup` is given, the removed paths are archived first to
 `~/backups/zsh-tmux-<timestamp>.tar.gz` and the path is printed at the end.
 Changes made to the live files are **not** carried across a reset: to keep
 one, copy it into `.fresh/` as well.
+
+`~/.config/nvim` is deliberately **not** removed by `--fresh`: it is a
+submodule, not a baseline copy, and its plugin tree lives in
+`~/.local/share/nvim`. Restore it from the repository instead:
+
+```bash
+cd ~
+git --git-dir="$HOME/.dotfiles" --work-tree="$HOME" submodule update --init .config/nvim
+```
+
+## Neovim
+
+The editor configuration is [LazyVim](https://lazyvim.github.io): the
+official starter template plus the extras that were wanted on top of it.
+
+| Piece | What it gives you |
+|---|---|
+| `snacks.picker` / `snacks.explorer` | file finder and explorer |
+| `blink.cmp` | completion |
+| `nvim-lspconfig` + `mason` | language servers, formatters, linters, debug adapters |
+| `nvim-treesitter` | highlighting, incremental selection, context |
+| `nvim-dap` + `dap-ui` | debugging, with a floating UI and inline values |
+| `neotest` | test runner |
+| `gitsigns`, `lazygit`, `gh` | the git workflow |
+| Copilot | completion and chat (`:Copilot auth` once) |
+
+The extras are listed in `nvim/lua/extras.lua`, your own keymaps and options
+in `nvim/lua/config/`, and your own plugin specs in `nvim/lua/plugins/`. The
+alternatives to the choices above (telescope, neo-tree, nvim-cmp, alpha) are
+commented out where they would go.
+
+Everything is pinned: `lazy-lock.json` records the commit of every plugin, so
+the same tree is reproduced on the next machine.
+
+```bash
+cd ~/.config/nvim
+nvim --headless '+Lazy! update' +qa    # update the plugins
+git commit -am 'chore: update the lockfile' && git push
+```
+
+`setup.sh` installs the plugin tree for you (`nvim --headless "+Lazy! sync"`)
+and verifies the Neovim version, the configuration and the installed plugins
+and tools. See [docs/tutorial.md](./docs/tutorial.md#neovim) for the details.
 
 ## Line editing
 
