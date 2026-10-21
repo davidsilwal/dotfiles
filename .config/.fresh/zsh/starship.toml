@@ -6,7 +6,16 @@
 # The icon is now a literal glyph in the format; the language modules are
 # manifest-driven (see the block above [c]). scan_timeout stays as a backstop
 # in case a module is ever given directory detection again.
-scan_timeout = 10
+#
+# The scan itself is only a one-level read_dir of the current directory, which
+# normally costs well under a millisecond, so the timeout is a cap and not a
+# delay: the prompt returns as soon as the listing is done. It used to be 10 ms,
+# which is tighter than a busy filesystem can answer -- a cold cache or a
+# concurrent write (a compiler, a package install) pushed the listing past it
+# and produced a spurious "Scanning current directory timed out" warning for a
+# scan that would have finished a moment later. 100 ms keeps the backstop while
+# tolerating a stalled disk.
+scan_timeout = 100
 
 format = """
 [](red)\
