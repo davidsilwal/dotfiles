@@ -17,6 +17,8 @@ and verifies. Nothing here is read at runtime; the live files are:
 | `zsh/.zshenv` | environment for every zsh: XDG, PATH, EDITOR, PAGER |
 | `zsh/.zshrc` | interactive zsh: history, completion, bindings, prompt, aliases |
 | `zsh/starship.toml` | prompt: `catppuccin-powerline` preset (Catppuccin Mocha) |
+| `zsh/scripts/prompt-bench.sh` | prompt latency measurement, installed as `prompt-bench` |
+| `zsh/scripts/versions.sh` | toolchain versions for the current directory, as `versions` |
 | `tmux/tmux.conf` | native tmux 3.2+ configuration, no plugin manager |
 | `home/.tmux.conf` | loader for tmux builds older than 3.2 |
 | `home/.zshenv` | fallback when zsh starts without `ZDOTDIR` |

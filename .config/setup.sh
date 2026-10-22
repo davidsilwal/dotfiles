@@ -391,14 +391,20 @@ install_nvim_plugins() {
     # the first real start is fast, and the download happens while the user is
     # watching the installer rather than on the first keystroke. It is the
     # slow step: about a hundred repositories and a gigabyte of tool servers.
+    #
+    # `restore`, not `sync`: restore checks out the commits pinned in
+    # lazy-lock.json and only resolves plugins the lockfile does not mention
+    # yet. `sync` moves every plugin to its branch head and rewrites the
+    # lockfile, so installing would repin the editor -- the opposite of what
+    # the lockfile is for, and a dirty submodule in the dotfiles repository.
     local out rc start end
     start=$(date +%s)
-    out=$(cd "$NVIM_DIR" && nvim --headless "+Lazy! sync" +qa 2>&1); rc=$?
+    out=$(cd "$NVIM_DIR" && nvim --headless "+Lazy! restore" +qa 2>&1); rc=$?
     end=$(date +%s)
     if [ "$rc" -eq 0 ]; then
-        ok "plugins synced ($(( end - start ))s)"
+        ok "plugins restored to the lockfile ($(( end - start ))s)"
     else
-        warn "the plugin sync did not finish cleanly (rc=$rc)"
+        warn "the plugin restore did not finish cleanly (rc=$rc)"
         printf '%s\n' "$out" | tail -5 | sed 's/^/      /' >&2
     fi
     return 0

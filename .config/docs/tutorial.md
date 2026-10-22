@@ -100,7 +100,9 @@ State lives outside the config on purpose: history in
 `~/.local/state/zsh/history`, completion caches in `~/.cache/zsh`, tmux
 snapshots in `~/.local/state/tmux/resurrect`, the Neovim plugin tree and the
 mason toolchain in `~/.local/share/nvim`. `setup.sh --fresh` deletes the
-configuration directories but not your history or saved sessions.
+configuration directories, and the zsh history goes with them -- the tarball it
+writes to `~/backups` beforehand is the way back -- while the tmux snapshots
+and the Neovim tree are left alone.
 
 ## `.zshrc`, stage by stage
 
