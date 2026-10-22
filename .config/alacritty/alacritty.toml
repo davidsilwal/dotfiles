@@ -1,0 +1,103 @@
+# =============================================================================
+#  ~/.config/alacritty/alacritty.toml - the window the rest is drawn in
+#
+#  Catppuccin Mocha: the palette zsh/starship.toml and tmux/tmux.conf draw
+#  with, so the prompt's blocks sit on a background of their own colour
+#  instead of on whatever the terminal shipped with.
+#
+#  This file only themes alacritty. The palette has to be set in whatever
+#  terminal actually draws the window -- GNOME Terminal, GNOME Console, iTerm2
+#  and Windows Terminal each have their own place for it, and docs/ubuntu.md
+#  step 8 names them.
+#
+#  Alacritty reads TOML from 0.13 on. `alacritty msg config` re-reads this file
+#  in a running window (Ctrl-Shift-R on a fresh install).
+# =============================================================================
+
+[colors.primary]
+background = "#1e1e2e"
+foreground = "#cdd6f4"
+dim_foreground = "#7f849c"
+bright_foreground = "#cdd6f4"
+
+[colors.cursor]
+text = "#1e1e2e"
+cursor = "#f5e0dc"
+
+[colors.vi_mode_cursor]
+text = "#1e1e2e"
+cursor = "#b4befe"
+
+# Match and hint highlights: readable on the background they replace, rather
+# than the stock theme's blue-on-blue.
+[colors.search.matches]
+foreground = "#1e1e2e"
+background = "#a6e3a1"
+
+[colors.search.focused_match]
+foreground = "#1e1e2e"
+background = "#a6e3a1"
+
+[colors.footer_bar]
+foreground = "#1e1e2e"
+background = "#a6adc8"
+
+[colors.hints.start]
+foreground = "#1e1e2e"
+background = "#f9e2af"
+
+[colors.hints.end]
+foreground = "#1e1e2e"
+background = "#a6adc8"
+
+[colors.selection]
+text = "#1e1e2e"
+background = "#f5e0dc"
+
+[colors.normal]
+black = "#45475a"
+red = "#f38ba8"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+cyan = "#94e2d5"
+white = "#bac2de"
+
+[colors.bright]
+black = "#585b70"
+red = "#f38ba8"
+green = "#a6e3a1"
+yellow = "#f9e2af"
+blue = "#89b4fa"
+magenta = "#f5c2e7"
+cyan = "#94e2d5"
+white = "#a6adc8"
+
+# The font the prompt needs: its powerline separators are private-use glyphs
+# that only a patched family draws. setup.sh installs it when fontconfig
+# cannot already resolve the name.
+[font]
+size = 11
+
+[font.normal]
+family = "JetBrainsMono Nerd Font"
+style = "Regular"
+
+[font.bold]
+family = "JetBrainsMono Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMono Nerd Font"
+style = "Italic"
+
+[font.bold_italic]
+family = "JetBrainsMono Nerd Font"
+style = "Bold Italic"
+
+[window]
+# A little air between the text and the window edge; the tmux status bar then
+# reads as part of the frame rather than touching it.
+padding = { x = 6, y = 6 }
+dynamic_padding = false

@@ -258,7 +258,7 @@ The emulator still has to be told to use it. On Ubuntu that is usually one of:
 |---|---|
 | GNOME Terminal | Preferences -> Profile -> Custom font |
 | GNOME Console (kgx) | `gsettings set org.gnome.Console custom-font "JetBrainsMono Nerd Font 11"`, then `gsettings set org.gnome.Console use-system-font false` |
-| Alacritty | `[font]` -> `family = "JetBrainsMono Nerd Font"` |
+| Alacritty | already done by `alacritty/alacritty.toml` in this repository: `[font.normal] family = "JetBrainsMono Nerd Font"`, plus the Catppuccin Mocha palette |
 | kitty | `font_family JetBrainsMono Nerd Font` |
 | VS Code | `"terminal.integrated.fontFamily": "JetBrainsMono Nerd Font"` |
 | Windows Terminal (WSL) | install the TTF **on Windows** and pick it in the profile |

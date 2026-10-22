@@ -105,12 +105,19 @@ Plugins are cloned (shallow, no manager, no updater) by `setup.sh`:
 ## Theme
 
 One palette everywhere: **Catppuccin Mocha**, written out rather than pulled
-in as a plugin. The tmux status bar, the fzf finder and the fzf-tab menu use
-the same hex values, and the prompt is `starship` on the
-`catppuccin-powerline` preset from `zsh/starship.toml`. `.zshenv` exports
-`STARSHIP_CONFIG` so that file lives with the rest of the shell config and
-survives `--fresh`. The prompt's powerline separators need a Nerd Font, which
-`setup.sh` installs when fontconfig cannot already resolve it.
+in as a plugin. `alacritty/alacritty.toml` paints the window itself, so the
+prompt's blocks sit on a background of their own colour; the tmux status bar,
+the fzf finder and the fzf-tab menu use the same hex values, and the prompt is
+`starship` on the `catppuccin-powerline` preset from `zsh/starship.toml`.
+`.zshenv` exports `STARSHIP_CONFIG` so that file lives with the rest of the
+shell config and survives `--fresh`. The prompt's powerline separators need a
+Nerd Font, which `setup.sh` installs when fontconfig cannot already resolve
+it -- and which the alacritty config names as its font family.
+
+The window is the one part no installer can finish: a running alacritty keeps
+the palette it started with, so it has to be reopened (or reloaded with
+Ctrl-Shift-R) before the new colours appear. Any other terminal reads its
+palette from its own settings, not from this file.
 
 ### Prompt cost
 

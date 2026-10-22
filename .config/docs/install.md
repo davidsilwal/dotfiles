@@ -402,10 +402,11 @@ just a fallback that forwards to `~/.config/zsh/.zshenv`.
 ## What the installer leaves out
 
 - **No `chsh`.** Your login shell is your account setting; step 3 is manual.
-- **No terminal colour scheme.** The palette belongs to the terminal, not to
-  the shell: set Catppuccin Mocha there if you want the prompt's hex values to
-  match the window background. `starship.toml` carries the palette it draws
-  with, but it cannot recolour the terminal it is drawn on.
+- **No terminal colour scheme beyond alacritty's.** `alacritty/alacritty.toml`
+  sets the window palette and font, and alacritty reads it at start-up --
+  reopen the window after installing. Every other terminal keeps its own
+  colours: `starship.toml` carries the palette the prompt and tmux draw with,
+  but nothing outside alacritty reads a file to recolour a window.
 - **No plugin manager, no TPM.** Five repositories are cloned shallowly by
   `setup.sh`; updating them is `git -C <dir> pull --ff-only`. Neovim is the one
   exception: it uses lazy.nvim, because a language server stack is not

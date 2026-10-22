@@ -88,6 +88,7 @@ defined above it.
 | `zsh/scripts/prompt-bench.sh` | median/p90 prompt latency vs. the spawn floor (`prompt-bench`) |
 | `zsh/scripts/versions.sh` | toolchain versions for the current directory, on demand (`versions`) |
 | `zsh/plugins/` | four shallow clones, created by `setup.sh`, ignored by git |
+| `alacritty/alacritty.toml` | the window: Catppuccin Mocha palette and the Nerd Font family |
 | `tmux/tmux.conf` | one file: prefix, panes, status bar, keys, resurrect hook |
 | `tmux/plugins/` | tmux-resurrect clone, ignored by git |
 | `nvim/` | LazyVim configuration, a submodule: extras, options, keymaps, lockfile |
