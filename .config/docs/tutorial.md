@@ -476,7 +476,10 @@ more than 4x the median means the machine is busy and both figures are
 pessimistic.
 
 That is why the automated gate uses `--max-cost=30` and not the 60 ms median:
-load moves both numbers, the difference stays put.
+load moves both numbers, the difference stays put. For the difference to stay
+put the two runs have to see the same load, so `prompt-bench` interleaves them
+-- config, bare, config, bare -- instead of measuring all of one and then all
+of the other.
 
 The timing gate is a budget, not a proof, so `setup.sh --check` carries a second
 one that is deterministic: it renders the prompt in the fixture with every
@@ -488,9 +491,10 @@ no amount of machine load changes the answer.
 older shells. On macOS, where `/bin/bash` is 3.2, run it with Homebrew's bash;
 `setup.sh` and `versions` work with the system one.
 
-For start-up, `setup.sh --check` takes the best of three runs against a 400 ms
-budget -- the minimum is the fair statistic on a machine with other work
-running.
+For start-up, `setup.sh --check` takes the best of up to nine runs against a
+400 ms budget -- three, then two more rounds of three if the host was busy
+enough to exceed it. The minimum is the fair statistic on a machine with other
+work running, and a real regression is in every sample.
 
 ## Exercises
 

@@ -105,15 +105,24 @@ cd -- "$dir" || exit 2
 # would add more than the thing being measured.
 now_us() { local t=${EPOCHREALTIME/./}; REPLY=$((10#$t)); }
 
-measure() {                     # measure <array-name> <config> [width]
-    local -n _out=$1
-    local conf=$2 width=${3:-120} i start end
-    _out=()
+# Both runs are interleaved on purpose. Measuring every config sample and
+# then every bare one lets a spike in host load land on only one of them, and
+# the difference then reports a cost the configuration does not have. By
+# alternating, the same drift is paid by both and cancels out of the gap.
+measure_pair() {                # measure_pair <config-array> <bare-array> [width]
+    local -n _cfg=$1 _bare=$2
+    local width=${3:-120} i start end
+    _cfg=(); _bare=()
     for (( i = 0; i < samples; i++ )); do
         now_us; start=$REPLY
-        STARSHIP_CONFIG=$conf starship prompt --terminal-width="$width" >/dev/null 2>&1
+        STARSHIP_CONFIG=$STARSHIP_CONFIG starship prompt --terminal-width="$width" >/dev/null 2>&1
         now_us; end=$REPLY
-        _out+=( $(( (end - start) / 1000 )) )
+        _cfg+=( $(( (end - start) / 1000 )) )
+
+        now_us; start=$REPLY
+        STARSHIP_CONFIG=$bare starship prompt --terminal-width="$width" >/dev/null 2>&1
+        now_us; end=$REPLY
+        _bare+=( $(( (end - start) / 1000 )) )
     done
 }
 
@@ -137,20 +146,20 @@ printf '\n  %s\n  %s, %s samples\n\n' \
 cfg=()
 plain=()
 
-measure cfg "$STARSHIP_CONFIG"
+measure_pair cfg plain
+
 stats "${cfg[@]}"
 row config "$MEDIAN" "$P90" "$MAX"
 cfg_median=$MEDIAN cfg_p90=$P90
 
-measure plain "$bare"
 stats "${plain[@]}"
 row bare "$MEDIAN" "$P90" "$MAX"
 bare_median=$MEDIAN
 
 printf '\n  config cost: %s ms over the spawn floor\n' "$(( cfg_median - bare_median ))"
 
-# Two separate sample runs: on a contended host the floor can measure above the
-# config. That is noise, not a negative cost.
+# Even interleaved, a contended host can measure the floor above the config.
+# That is noise, not a negative cost.
 cost=$(( cfg_median - bare_median ))
 (( cost < 0 )) && cost=0
 status=0
