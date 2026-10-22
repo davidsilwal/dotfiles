@@ -266,6 +266,19 @@ The emulator still has to be told to use it. On Ubuntu that is usually one of:
 Until then every powerline separator is a box or a `?`. The shell is fine; the
 glyphs are not.
 
+To make Alacritty the system default, not just the emulator this configuration
+themes:
+
+```bash
+sudo apt install alacritty
+sudo update-alternatives --set x-terminal-emulator /usr/bin/alacritty
+```
+
+`zshenv` also exports `TERMINAL=alacritty` for the tools that read the
+environment instead of the Debian alternative (`xdg-terminal-exec` is not
+installed on 26.04). Neither line starts anything: on a headless host Alacritty
+is installed but never launched.
+
 ## 9. Verify
 
 ```bash

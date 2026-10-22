@@ -44,6 +44,14 @@ else
   export VISUAL=vi
 fi
 
+# The default terminal emulator, for the programs that ask the environment
+# instead of the desktop's x-terminal-emulator alternative (which is also set to
+# alacritty). Over SSH this is what a local terminal would be; the host itself
+# is headless, so nothing launches here.
+if command -v alacritty >/dev/null 2>&1; then
+  export TERMINAL=alacritty
+fi
+
 export PAGER=less
 export LESS='-R -F -X -i -M'
 export LESSHISTFILE=-
