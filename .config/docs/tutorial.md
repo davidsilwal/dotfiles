@@ -249,12 +249,14 @@ device instead of once for the server:
 | 60-99 | session pill only |
 | under 60 (phone in Termius) | nothing; the window list gets the whole row |
 
-`window-size smallest` keeps a shared session inside the narrowest attached
-client, so a 40-column phone never receives a 186-column canvas it cannot
-draw. The desktop simply has empty space on the right until the phone
-detaches; `aggressive-resize on` applies the same rule to windows that are not
-currently visible. `set -g mouse on` is what makes touch scrolling and pane
-selection work in Termius.
+`window-size latest` gives whichever client is active its own size in **both**
+axes. `smallest` looks tempting but is wrong for mixed screens: it takes the
+minimum per axis, so a tall phone inherits the desktop's shorter height and
+gets a blank band at the bottom, while a short phone inherits a window taller
+than its screen and loses the prompt below the fold. `aggressive-resize on`
+re-sizes windows that are not currently visible to the clients viewing them,
+instead of leaving a stale size behind. `set -g mouse on` is what makes touch
+scrolling and pane selection work in Termius.
 
 One detail the keys do not make obvious: a resize moves the border the pane
 shares with its neighbour, not an outer edge of the window. `prefix + L`

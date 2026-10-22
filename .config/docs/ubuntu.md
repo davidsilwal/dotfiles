@@ -378,9 +378,10 @@ window background stays theirs.
 
 Termius, Blink and friends are just narrow clients. tmux drops the application
 and session pills below 100 columns and everything but the window list below
-60, so the bar never wraps; `window-size smallest` keeps a shared session
-inside the narrowest attached screen. Detach the phone and the desktop gets
-its width back. Nothing needs a per-device profile.
+60, so the bar never wraps. `window-size latest` gives the active device its
+own width and height; `smallest` would take the minimum per axis, which fits a
+phone's width but leaves it a desktop-height canvas (blank rows at the bottom)
+or a too-tall one. Switch devices and tmux re-sizes on the next input.
 
 ### Clipboard over SSH
 
