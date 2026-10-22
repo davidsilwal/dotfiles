@@ -222,7 +222,9 @@ field changes between prompts -- so a hit would mean showing a stale prompt.
 
 ## tmux
 
-One file, no TPM. The parts worth knowing:
+One file. TPM is installed but has an empty `@plugin` list; the theme,
+resurrect and the vendored helpers are `run-shell`ed directly, so a tmux start
+never touches the network. The parts worth knowing:
 
 | Area | Behaviour |
 |---|---|

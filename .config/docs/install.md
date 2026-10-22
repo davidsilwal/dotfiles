@@ -409,10 +409,13 @@ just a fallback that forwards to `~/.config/zsh/.zshenv`.
   reopen the window after installing. For anything else there is the `theme`
   command, which sends the same palette to the terminal over OSC 4/10/11 and
   works only where the emulator accepts it.
-- **No plugin manager, no TPM.** Five repositories are cloned shallowly by
-  `setup.sh`; updating them is `git -C <dir> pull --ff-only`. Neovim is the one
-  exception: it uses lazy.nvim, because a language server stack is not
-  something a shell script should be responsible for.
+- **TPM is installed but manages nothing.** Eight repositories are cloned
+  shallowly by `setup.sh` (four zsh plugins, four under tmux); updating them is
+  `git -C <dir> pull --ff-only`. TPM is there so `prefix I` works if you add a
+  plugin later; its `@plugin` list is deliberately empty (see
+  [tutorial.md](./tutorial.md#tmux)). Neovim is the one exception: it uses
+  lazy.nvim, because a language server stack is not something a shell script
+  should be responsible for.
 - **No global font on the Windows side.** For WSL, install the TTF in Windows.
 - **No changes outside `$HOME`**, except reading `/etc/zsh/zshenv` and (with
   sudo) the package manager.
