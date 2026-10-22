@@ -12,10 +12,12 @@ Terminal-centric dotfiles: zsh, tmux and Neovim.
 | [`setup.sh`](./setup.sh) | Installer/verifier for all of the above |
 | [`docs/`](./docs/) | [install.md](./docs/install.md) for a fresh machine, [tutorial.md](./docs/tutorial.md) for how it works |
 
-The shell and tmux configs are self-contained: no plugin manager, no TPM, no
-network access on start-up. A missing optional tool (`starship`, `fzf`,
-`zoxide`, `eza`) removes its feature and nothing else — the same is true of
-the four vendored zsh plugins and tmux-resurrect.
+The shell and tmux configs are self-contained: nothing is fetched at
+start-up. A missing optional tool (`starship`, `fzf`, `zoxide`, `eza`) removes
+its feature and nothing else — the same is true of the four vendored zsh
+plugins, tmux-resurrect and the Catppuccin tmux theme. TPM is installed and
+listed, but it deliberately manages no plugins: its only job is to make
+`prefix + I` work if you add one later.
 
 Neovim is the exception, and it is a deliberate one: an editor configuration
 with a language server stack is not something a shell script should be
@@ -56,7 +58,7 @@ compiled, and nothing runs at start-up to fetch anything.
 
 | Package manager | Packages |
 |---|---|
-| `apt` | `zsh` `git` `curl` `fzf` `fd-find` `bat` `eza` `ripgrep` `zoxide` `neovim` `fontconfig` `fonts-noto-color-emoji` `shellcheck` `starship` `less` `unzip` |
+| `apt` | `zsh` `git` `curl` `fzf` `fd-find` `bat` `eza` `ripgrep` `zoxide` `neovim` `fontconfig` `fonts-noto-color-emoji` `shellcheck` `starship` `tealdeer` `less` `unzip` |
 | `pacman` | the same set under Arch names (`fd`, `noto-fonts-emoji`, …) |
 | `dnf` | `fd-find`, `google-noto-color-emoji-fonts`, `ShellCheck`, … |
 | `zypper` | `fd`, `noto-coloremoji-fonts`, `ShellCheck`, … |
@@ -65,6 +67,11 @@ compiled, and nothing runs at start-up to fetch anything.
 
 `tmux` is only requested when the installed one is older than 3.2; a newer
 build (as `/usr/local/bin/tmux` here) is left alone.
+
+`television` and `superfile` are not in any archive on 26.04, so `setup.sh`
+fetches their pinned release tarballs into `/usr/local/bin` after the package
+step. A failure there is a warning, not an error: neither the shell nor tmux
+depends on them.
 
 The archive does not carry everything on every release: Ubuntu before 25.04
 has no `starship` package, 22.04 has no `eza`, and both ship Neovim older than
@@ -98,9 +105,22 @@ Plugins are cloned (shallow, no manager, no updater) by `setup.sh`:
 | [zsh-completions](https://github.com/zsh-users/zsh-completions) | `zsh/plugins/` | ~240 extra completion definitions (fpath only, no start-up cost) |
 | [fzf-tab](https://github.com/Aloxaf/fzf-tab) | `zsh/plugins/` | fuzzy completion menu with previews |
 | [tmux-resurrect](https://github.com/tmux-plugins/tmux-resurrect) | `tmux/plugins/` | save/restore sessions: `prefix C-s` / `prefix C-r` |
+| [catppuccin/tmux](https://github.com/catppuccin/tmux) | `tmux/plugins/catppuccin/` | the `@thm_*` palette and rounded window pills, pinned to `v2.3.2` |
+| [tpm](https://github.com/tmux-plugins/tpm) | `tmux/plugins/tpm/` | installs plugins on demand (`prefix I`); no plugins listed by default |
 
 `tmux-resurrect` keeps its snapshots in `~/.local/state/tmux/resurrect`, so
 `setup.sh --fresh` cannot delete them with the configuration.
+
+## Beyond the terminal
+
+Four things sit outside zsh/tmux/nvim and are installed by the same script:
+
+| Piece | Where | What it does |
+|---|---|---|
+| `lazygit/config.yml` | `~/.config/lazygit/` | Catppuccin Mocha for the git TUI (`lg`) |
+| Catppuccin bat theme | `~/.config/bat/` | syntax colours in previews; `BAT_THEME` is set in `.zshrc` |
+| `list-oldfiles.sh`, `zoxide-openfiles.sh`, `sessionizer.sh` | `zsh/scripts/` | `nlof`, `nzo`, `tns` / `prefix f` |
+| `television`, `superfile` | `/usr/local/bin/` | `tv` and `spf`; static upstream tarballs, no archive package |
 
 ## Theme
 
@@ -208,7 +228,8 @@ It removes `~/.config/zsh`, `~/.config/tmux`, the two shims (`~/.tmux.conf`,
 `~/.zshenv`), the plugin checkouts and any leftover TPM state (`~/.tmux`,
 `~/.local/share/tmux`), the zsh caches (`~/.cache/zsh`, `~/.cache/fsh`) and
 `~/.local/state/zsh`, plus old `~/.tmux.conf.bak.*` files. The four zsh
-plugins and tmux-resurrect are re-cloned afterwards. Everything else under
+plugins, tmux-resurrect, TPM and the Catppuccin theme are re-cloned
+afterwards. Everything else under
 `~/.config` is untouched — `~/.local/state/tmux/resurrect` included, so saved
 sessions survive a reset.
 

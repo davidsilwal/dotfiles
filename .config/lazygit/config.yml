@@ -1,0 +1,48 @@
+# =============================================================================
+#  ~/.config/lazygit/config.yml - Catppuccin Mocha
+#
+#  The same palette as starship.toml, tmux.conf, fzf and alacritty.toml, so the
+#  git TUI does not open as a differently-coloured island in the middle of the
+#  session. Colours are plain hexes; lazygit does not read the palette from
+#  anywhere, which is why they are repeated here.
+#
+#  Keys are the ones lazygit 0.40+ understands; `lazygit --config` prints the
+#  file it actually loaded if a colour looks wrong.
+# =============================================================================
+gui:
+  theme:
+    activeBorderColor:
+      - '#a6e3a1'
+      - bold
+    inactiveBorderColor:
+      - '#a6adc8'
+    optionsTextColor:
+      - '#89b4fa'
+    selectedLineBgColor:
+      - '#313244'
+    # Keep the selection visible in a pane that does not have focus, otherwise
+    # the cursor disappears the moment you look at the other panel.
+    inactiveViewSelectedLineBgColor:
+      - '#45475a'
+    cherryPickedCommitBgColor:
+      - '#45475a'
+    cherryPickedCommitFgColor:
+      - '#a6e3a1'
+    unstagedChangesColor:
+      - '#f38ba8'
+    defaultFgColor:
+      - '#cdd6f4'
+    searchingActiveBorderColor:
+      - '#f9e2af'
+
+  authorColors:
+    '*': '#b4befe'
+
+  # Catppuccin Mocha reads better with the Nerd Font glyphs this host already
+  # has; the border style matches the rounded popups LazyVim draws.
+  border: rounded
+  nerdFontsVersion: "3"
+
+# No custom pager: `delta` is not installed, and a pager that does not exist
+# would make every diff pane open empty. lazygit's built-in renderer honours
+# the theme above.

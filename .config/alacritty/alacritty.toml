@@ -101,3 +101,17 @@ style = "Bold Italic"
 # reads as part of the frame rather than touching it.
 padding = { x = 6, y = 6 }
 dynamic_padding = false
+# 1.0 keeps the window opaque. Lower it only if the compositor is fast enough
+# to blur behind the text; a transparent window whose background is a different
+# colour from #1e1e2e defeats the point of the palette.
+opacity = 1.0
+# "Buttonless" on macOS, "None" on most Linux WMs. The server this file is
+# deployed to has no display at all -- it is the laptop's terminal that reads
+# this section.
+decorations = "None"
+
+[cursor.style]
+# Block in normal mode, beam while inserting: the shape tells you which mode
+# zsh's vi bindings are in before you read the prompt.
+shape = "Block"
+blinking = "Off"

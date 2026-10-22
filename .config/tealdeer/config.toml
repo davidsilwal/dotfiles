@@ -1,0 +1,11 @@
+# =============================================================================
+#  ~/.config/tealdeer/config.toml
+#
+#  tealdeer keeps a local copy of the tldr pages; without this file the first
+#  `tldr` after an install prints "Page cache not found". Updating weekly is
+#  enough for a cheatsheet, and the update is a single archive download.
+# =============================================================================
+
+[updates]
+auto_update = true
+auto_update_interval_hours = 168

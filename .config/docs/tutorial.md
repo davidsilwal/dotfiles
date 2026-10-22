@@ -246,8 +246,12 @@ For a one-off amount there is the command line: `tmux resize-pane -R 10`.
 
 Two design decisions:
 
-- **No TPM.** tmux-resurrect is a bash script; `tmux.conf` sources it with
-  `run-shell` through bash, guarded so a missing checkout prints nothing.
+- **TPM, with nothing to manage.** It is installed so `prefix I` works if you
+  add a plugin later, but the `@plugin` list is empty: `tmux-sensible` forces
+  `status-keys emacs`, `tmux-yank` needs a local clipboard, and resurrect is a
+  bash script that `tmux.conf` sources through bash itself (TPM's `run-shell`
+  would hand it to `/bin/sh`). The theme is loaded the same way, before the
+  status bar, so its `@thm_*` colours exist by the time the bar is drawn.
 - **Snapshots outside the config tree.** `@resurrect-dir` points at
   `~/.local/state`, so `--fresh` cannot delete saved sessions along with the
   configuration.

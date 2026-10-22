@@ -3,8 +3,9 @@
 #  setup.sh - zsh + tmux + neovim terminal stack
 #
 #  Installs the tools the configuration needs, clones the vendored plugins
-#  (four for zsh, one for tmux), places the configuration, and verifies that
-#  both shells start clean. Safe to run repeatedly.
+#  (four for zsh, three for tmux), fetches the two binaries the Ubuntu archive
+#  does not carry, places the configuration, and verifies that both shells
+#  start clean. Safe to run repeatedly.
 #
 #  Usage:
 #     ./setup.sh              # install / repair in place, then verify
@@ -104,21 +105,21 @@ packages_for() {
     case "$1" in
         apt)    printf '%s\n' zsh git curl fzf fd-find bat eza ripgrep zoxide \
                     neovim fontconfig fonts-noto-color-emoji \
-                    shellcheck starship less unzip ;;
+                    shellcheck starship less unzip tealdeer ;;
         pacman) printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
                     neovim fontconfig noto-fonts-emoji \
-                    shellcheck starship less unzip ;;
+                    shellcheck starship less unzip tealdeer ;;
         dnf)    printf '%s\n' zsh git curl fzf fd-find bat eza ripgrep zoxide \
                     neovim fontconfig google-noto-color-emoji-fonts \
-                    ShellCheck starship less unzip ;;
+                    ShellCheck starship less unzip tealdeer ;;
         zypper) printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
                     neovim fontconfig noto-coloremoji-fonts \
-                    ShellCheck starship less unzip ;;
+                    ShellCheck starship less unzip tealdeer ;;
         apk)    printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
                     neovim fontconfig noto-fonts-emoji \
-                    shellcheck starship less unzip ;;
+                    shellcheck starship less unzip tealdeer ;;
         brew)   printf '%s\n' zsh git curl fzf fd bat eza ripgrep zoxide \
-                    neovim fontconfig shellcheck starship less unzip ;;
+                    neovim fontconfig shellcheck starship less unzip tealdeer ;;
     esac
 }
 
@@ -259,9 +260,15 @@ ZSH_PLUGINS=(
     "https://github.com/Aloxaf/fzf-tab fzf-tab"
 )
 
-# tmux plugins are shell scripts sourced by tmux.conf, not a plugin manager.
+# tmux plugins are shell scripts sourced by tmux.conf. TPM is not needed for
+# the theme or resurrect, but it is installed because the tmux.conf declares
+# both through it; the checkouts are pinned where upstream publishes tags, so
+# a reinstall does not silently move to a new layout.
+#   <url> <directory> [branch-or-tag]
 TMUX_PLUGINS=(
     "https://github.com/tmux-plugins/tmux-resurrect tmux-resurrect"
+    "https://github.com/tmux-plugins/tpm tpm"
+    "https://github.com/catppuccin/tmux catppuccin v2.3.2"
 )
 
 install_plugins() {
@@ -292,20 +299,22 @@ install_tmux_plugins() {
     step "tmux plugins"
     command -v git >/dev/null 2>&1 || { err "git is required for the plugins"; return 1; }
 
-    local spec url name dir failed=0
+    local spec url name ref dir failed=0
+    local -a clone_args
     for spec in "${TMUX_PLUGINS[@]}"; do
-        url=${spec%% *}
-        name=${spec##* }
+        read -r url name ref <<<"$spec"
         dir="$TMUX_DIR/plugins/$name"
         if [ -d "$dir/.git" ]; then
             ok "$name"
             continue
         fi
-        if GIT_TERMINAL_PROMPT=0 git clone --depth 1 --quiet "$url" "$dir" 2>/dev/null; then
+        clone_args=(--depth 1 --quiet)
+        [ -n "$ref" ] && clone_args+=(--branch "$ref")
+        if GIT_TERMINAL_PROMPT=0 git clone "${clone_args[@]}" "$url" "$dir" 2>/dev/null; then
             # A shallow clone has no lib/tmux-test submodule, so the plugin's
             # test helpers are dangling symlinks. Drop the dev-only scaffolding.
             rm -rf "$dir/tests" "$dir/run_tests"
-            ok "$name (cloned)"
+            ok "$name (cloned${ref:+, $ref})"
         else
             err "$name (clone failed)"
             rm -rf -- "$dir"
@@ -313,6 +322,89 @@ install_tmux_plugins() {
         fi
     done
     return "$failed"
+}
+
+# --- bat theme ----------------------------------------------------------------
+# bat ships 24 themes and Catppuccin is not one of them. The .tmTheme is a
+# static file, so it is downloaded once and compiled into bat's cache; without
+# it BAT_THEME='Catppuccin Mocha' silently falls back to the default.
+install_bat_theme() {
+    step "bat theme"
+    if ! command -v bat >/dev/null 2>&1; then
+        info "bat not installed, skipping"
+        return 0
+    fi
+    if bat --list-themes 2>/dev/null | grep -qx 'Catppuccin Mocha'; then
+        ok "Catppuccin Mocha"
+        return 0
+    fi
+    command -v curl >/dev/null 2>&1 || { warn "curl missing, cannot fetch the theme"; return 0; }
+
+    local dir theme
+    dir="$(bat --config-dir)/themes"
+    theme="$dir/Catppuccin Mocha.tmTheme"
+    mkdir -p "$dir"
+    if curl -fsSL --retry 2 -o "$theme" \
+        'https://raw.githubusercontent.com/catppuccin/bat/main/themes/Catppuccin%20Mocha.tmTheme' &&
+       bat cache --build >/dev/null 2>&1; then
+        ok "Catppuccin Mocha -> ${theme/#$HOME/~}"
+    else
+        warn "could not install the bat theme (no network?)"
+        rm -f -- "$theme"
+    fi
+    return 0
+}
+
+# --- Optional binaries --------------------------------------------------------
+# television and superfile are not in any distribution archive on 26.04. Both
+# publish static tarballs, so they are fetched, pinned, and unpacked into
+# /usr/local/bin. A failure here is a warning: nothing in the shell or tmux
+# config depends on them.
+TV_VERSION=0.15.9
+SPF_VERSION=v1.6.0
+
+install_extras() {
+    step "optional tools (tv, spf)"
+    local arch tv_url spf_url tmp
+    case "$(uname -m)" in
+        x86_64|amd64)  arch=x86_64 ;;
+        aarch64|arm64) arch=aarch64 ;;
+        *) warn "unsupported architecture $(uname -m), skipping"; return 0 ;;
+    esac
+
+    command -v tar >/dev/null 2>&1 || { warn "tar missing, skipping"; return 0; }
+
+    if command -v tv >/dev/null 2>&1; then
+        ok "tv $(tv --version 2>/dev/null | awk '{print $2}')"
+    else
+        tv_url="https://github.com/alexpasmantier/television/releases/download/${TV_VERSION}/tv-${TV_VERSION}-${arch}-unknown-linux-gnu.tar.gz"
+        tmp=$(mktemp -d)
+        if curl -fsSL --retry 2 -o "$tmp/tv.tar.gz" "$tv_url" &&
+           tar xzf "$tmp/tv.tar.gz" -C "$tmp" &&
+           install -m 0755 "$tmp/tv-${TV_VERSION}-${arch}-unknown-linux-gnu/tv" /usr/local/bin/tv; then
+            ok "tv $TV_VERSION -> /usr/local/bin/tv"
+        else
+            warn "could not install television (no network? wrong arch?)"
+        fi
+        rm -rf "$tmp"
+    fi
+
+    if command -v spf >/dev/null 2>&1; then
+        ok "spf $(spf --version 2>/dev/null | awk '{print $3}')"
+    else
+        spf_url="https://github.com/yorukot/superfile/releases/download/${SPF_VERSION}/superfile-linux-${SPF_VERSION}-amd64.tar.gz"
+        [ "$arch" = aarch64 ] && spf_url=${spf_url/amd64/arm64}
+        tmp=$(mktemp -d)
+        if curl -fsSL --retry 2 -o "$tmp/spf.tar.gz" "$spf_url" &&
+           tar xzf "$tmp/spf.tar.gz" -C "$tmp" &&
+           install -m 0755 "$tmp/dist/superfile-linux-${SPF_VERSION}-amd64/spf" /usr/local/bin/spf; then
+            ok "spf $SPF_VERSION -> /usr/local/bin/spf"
+        else
+            warn "could not install superfile (no network? wrong arch?)"
+        fi
+        rm -rf "$tmp"
+    fi
+    return 0
 }
 
 # --- Neovim ------------------------------------------------------------------
@@ -616,7 +708,7 @@ verify() {
     fi
 
     # Tools the config uses when present. Missing ones are not failures.
-    for b in zsh tmux git fzf fd bat eza rg zoxide nvim; do
+    for b in zsh tmux git fzf fd bat eza rg zoxide nvim lazygit tldr; do
         if command -v "$b" >/dev/null 2>&1; then ok "$b"; else warn "$b missing"; fi
     done
 
@@ -690,9 +782,10 @@ verify() {
     done
 
     for spec in "${TMUX_PLUGINS[@]}"; do
-        name=${spec##* }
+        read -r _ name _ <<<"$spec"
         case $name in
             tmux-resurrect) entry=resurrect.tmux ;;
+            tpm)            entry=tpm ;;
             *)              entry="$name.tmux" ;;
         esac
         if [ -r "$TMUX_DIR/plugins/$name/$entry" ]; then
@@ -701,6 +794,43 @@ verify() {
             warn "tmux plugin missing: $name (run: $0)"
         fi
     done
+
+    # The pieces the macOS port added. Each is optional at runtime, so a
+    # missing one is a warning; the two scripts are checked for the executable
+    # bit because the aliases rely on it.
+    if [ -f "$HOME/.config/lazygit/config.yml" ]; then
+        ok "lazygit theme"
+    else
+        warn "lazygit theme missing (run: $0)"
+    fi
+    for b in tv spf; do
+        if command -v "$b" >/dev/null 2>&1; then ok "$b"; else warn "$b missing (run: $0)"; fi
+    done
+    if command -v bat >/dev/null 2>&1; then
+        if bat --list-themes 2>/dev/null | grep -qx 'Catppuccin Mocha'; then
+            ok "bat theme: Catppuccin Mocha"
+        else
+            warn "bat theme missing: Catppuccin Mocha (run: $0)"
+        fi
+    fi
+    local s
+    for s in list-oldfiles.sh zoxide-openfiles.sh sessionizer.sh fzf-git.sh; do
+        if [ -x "$ZSH_DIR/scripts/$s" ]; then
+            ok "script: $s"
+        else
+            warn "script missing or not executable: $s (run: $0)"
+        fi
+    done
+    if [ -r "$TMUX_DIR/plugins/catppuccin/catppuccin.tmux" ]; then
+        ok "tmux theme: catppuccin"
+    else
+        warn "tmux theme missing: catppuccin (run: $0)"
+    fi
+    if [ -x "$TMUX_DIR/plugins/tpm/tpm" ]; then
+        ok "tpm"
+    else
+        warn "tpm missing (run: $0)"
+    fi
 
     # Prompt cost, measured where it is worst: a directory that matches every
     # language module. An empty home directory reports ~15 ms even when a badge
@@ -825,6 +955,8 @@ if [ "$CHECK_ONLY" -eq 0 ]; then
         info "skipped (--no-packages)"
     fi
     install_fonts
+    install_bat_theme
+    install_extras
     install_plugins || status=1
     install_tmux_plugins || status=1
     install_nvim_config || status=1

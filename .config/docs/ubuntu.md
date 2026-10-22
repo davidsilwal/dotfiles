@@ -335,3 +335,37 @@ tmux new -s check                # prefix + r reloads, prefix + d detaches
 The rest of the procedure -- updating, `--fresh`, what the installer
 deliberately leaves alone -- does not change on Ubuntu and lives in
 [install.md](./install.md).
+
+## 12. The macOS tutorial, ported
+
+The upstream tutorial this repository started from targets a macOS desktop. What
+does not translate, and what replaces it:
+
+| Tutorial item | On Linux |
+|---|---|
+| **Alacritty as the terminal** | A GUI program: it cannot run on a headless VPS. `alacritty/alacritty.toml` is still the right file -- it is read by the laptop that opens the SSH session, not by the server. |
+| **Homebrew, `mas`, `duck`** | `apt` replaces brew. `mas` is the Mac App Store and has no Linux build; `duck` (Cyberduck CLI) is macOS/Windows only -- `rclone`, already configured under `~/.config/rclone`, covers SFTP/WebDAV/S3. |
+| **Cmd+Enter toggles Alacritty** | A client-side shortcut, not a server one. On macOS the Shortcuts.app AppleScript still works. On a Linux desktop bind a window-manager shortcut to `alacritty --class dropdown`, or use `tdrop -a`. Nothing on the VPS is involved. |
+| **`fd` / `bat`** | Ubuntu installs them as `fdfind` and `batcat`; `setup.sh` links the expected names into `~/.local/bin`. |
+| **TPM + Catppuccin plugin** | Installed, but TPM manages no plugins by default: `tmux-sensible` overrides `status-keys`, `tmux-yank` needs `xclip`/`wl-copy`, and resurrect is a bash script that `tmux.conf` sources itself. The theme is pinned to `v2.3.2`. |
+| **`~/scripts/*.sh`** | Kept in `~/.config/zsh/scripts/` instead, so the dotfiles repository carries them and `setup.sh --fresh` restores them. |
+| **`tns` / `prefix f`** | Same script; the tmux binding opens it in a new window, because fzf needs a tty. |
+| **`nlof`, `nzo`** | Same idea, with `fd` exclusions for `node_modules`, `.venv`, caches and language-server state that a server accumulates. |
+
+### Clipboard over SSH
+
+`tmux.conf` sets `set-clipboard on`; the terminal on the other end has to honour
+OSC 52. Alacritty, kitty, WezTerm, iTerm2 and Windows Terminal do. Copying in
+tmux copy mode (`prefix [`, then `v`/`y`) then lands in the local clipboard
+without `xclip` on the server.
+
+### Checks specific to the port
+
+```bash
+tldr tar                     # tealdeer cache, filled on first use
+tv --version && spf --version
+lg                           # lazygit, Catppuccin Mocha
+nlof                         # recent nvim files, bat previews
+tns                          # session picker
+tmux new -s check            # prefix f opens the sessionizer
+```

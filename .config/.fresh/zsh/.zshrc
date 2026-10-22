@@ -216,6 +216,21 @@ fi
 # back to the terminal's 16 colours.
 export FZF_DEFAULT_OPTS='--color=fg:#cdd6f4,bg:#1e1e2e,hl:#f38ba8,fg+:#cdd6f4,bg+:#313244,hl+:#f38ba8,info:#a6adc8,prompt:#89b4fa,pointer:#f5c2e7,marker:#a6e3a1,spinner:#f9e2af,header:#cba6f7,border:#45475a'
 
+# bat: the previews in fzf and the two file pickers below use this theme.
+# `setup.sh` drops Catppuccin Mocha into ~/.config/bat/themes and rebuilds the
+# cache; a missing theme name only makes bat fall back to its default.
+export BAT_THEME='Catppuccin Mocha'
+export BAT_STYLE='numbers,changes,header'
+export BAT_PAGER='less -R'
+
+# fd and bat are `fdfind` and `batcat` in Ubuntu's archive; setup.sh links the
+# expected names into ~/.local/bin, and this makes sure that directory is
+# searched even when the shell was started without a login profile.
+case ":$path:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) path=("$HOME/.local/bin" $path) ;;
+esac
+
 # Key bindings need a terminal. Without one (a piped `zsh -ic 'cmd'`) fzf's
 # script tries to restore the read-only `zle` option and prints an error, so
 # the whole integration is skipped when stdin is not a tty.
@@ -225,16 +240,27 @@ if (( $+commands[fzf] )) && [[ -t 0 ]]; then
     [[ -r /usr/share/doc/fzf/examples/completion.zsh ]] &&
       source /usr/share/doc/fzf/examples/completion.zsh
   fi
+
+  # fzf-git: Ctrl-G then a letter to pick a branch, commit, file or remote.
+  # Sourced after fzf, because it binds the widgets fzf installs. The file is
+  # fetched by setup.sh with the other plugins; a missing checkout drops the
+  # feature and nothing else.
+  fzf_git=${ZDOTDIR:-$HOME/.config/zsh}/scripts/fzf-git.sh
+  [[ -r $fzf_git ]] && source "$fzf_git"
 fi
 
 # ---------------------------------------------------------------------------
 #  Aliases
 # ---------------------------------------------------------------------------
 if (( $+commands[eza] )); then
-  alias ls='eza --group-directories-first'
-  alias ll='eza -l --group-directories-first --time-style=long-iso'
-  alias la='eza -la --group-directories-first --time-style=long-iso'
-  alias lt='eza --tree --level=2 --group-directories-first'
+  # --icons=auto prints the Nerd Font glyphs when the terminal asks for them
+  # and plain names otherwise, so an SSH session from a terminal without the
+  # font is ugly rather than broken.
+  alias ls='eza --icons=auto --group-directories-first'
+  alias ll='eza -l --icons=auto --git --group-directories-first --time-style=long-iso'
+  alias la='eza -la --icons=auto --git --group-directories-first --time-style=long-iso'
+  alias lt='eza --tree --level=2 --icons=auto --group-directories-first'
+  alias tree='eza --tree --level=3 --icons=auto --group-directories-first'
 else
   alias ls='ls --color=auto'
   alias ll='ls -l --color=auto'
@@ -249,6 +275,44 @@ alias ..='cd ..'
 alias ...='cd ../..'
 alias reload='exec zsh'
 alias path='print -l $path'
+
+# Editors: nvim is the configuration this repository ships; `vim` would start
+# the archive's vim with none of it.
+if (( $+commands[nvim] )); then
+  export EDITOR=nvim VISUAL=nvim
+  alias vim='nvim'
+fi
+
+# --- The tools from the tutorial (each one optional) ------------------------
+(( $+commands[lazygit] )) && alias lg='lazygit'
+# `spf` and `tv` are already the binaries' own names; no alias needed.
+
+# nlof: recent Neovim files, previewed. nzo: any file inside a zoxide-tracked
+# directory, previewed. Both live in zsh/scripts/ so the dotfiles repository
+# carries them, rather than in ~/scripts where a reinstall would lose them.
+_zs_alias_script() {            # _zs_alias_script <alias> <file>
+  local file="${ZDOTDIR:-$HOME/.config/zsh}/scripts/$2"
+  [[ -x $file ]] && alias "$1=$file"
+}
+
+_zs_alias_script nlof list-oldfiles.sh
+_zs_alias_script nzo  zoxide-openfiles.sh
+_zs_alias_script tns  sessionizer.sh
+unset -f _zs_alias_script
+
+# fman: search every command on PATH, then open the man page for the pick.
+if (( $+commands[fzf] && $+commands[man] )); then
+  fman() {
+    local page
+    page=$(compgen -c | sort -u | fzf --height 50% --border --prompt=' man: ') || return 1
+    [[ -n $page ]] && man "$page"
+  }
+fi
+
+# tldr: the archive ships tealdeer; its cache is filled on first use.
+if (( $+commands[tldr] )); then
+  alias tldr='tldr --color always'
+fi
 
 # The dotfiles repository is a bare clone with $HOME as its work tree, so
 # every dotfile is managed through it: `dotfiles status`, `dotfiles add ...`,

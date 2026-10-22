@@ -129,7 +129,9 @@ It runs these steps in order and is safe to run again at any time:
 | Packages | installs the tools from the table in [Before you start](#before-you-start); retries once after `apt-get update` if the cache is stale; adds `tmux` only when the installed one is older than 3.2 |
 | Nerd Font | if `fc-list` cannot resolve `JetBrainsMono Nerd Font`, downloads the JetBrainsMono release into `~/.local/share/fonts` and runs `fc-cache` |
 | zsh plugins | shallow-clones four plugins into `~/.config/zsh/plugins/` |
-| tmux plugin | shallow-clones `tmux-resurrect` into `~/.config/tmux/plugins/` |
+| tmux plugins | shallow-clones `tmux-resurrect`, TPM and Catppuccin `v2.3.2` into `~/.config/tmux/plugins/` |
+| bat theme | downloads Catppuccin Mocha into `~/.config/bat/themes/` and rebuilds the cache |
+| Optional binaries | fetches `television` and `superfile` release tarballs into `/usr/local/bin` |
 | Neovim configuration | restores `~/.config/nvim` from the submodule when it is missing |
 | Neovim plugins | `nvim --headless "+Lazy! sync"` — the slow step, it downloads about a hundred plugins |
 | ZDOTDIR | checks that `/etc/zsh/zshenv` points zsh at `$XDG_CONFIG_HOME/zsh` |
