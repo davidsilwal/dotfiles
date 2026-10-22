@@ -114,13 +114,16 @@ shell config and survives `--fresh`. The prompt's powerline separators need a
 Nerd Font, which `setup.sh` installs when fontconfig cannot already resolve
 it -- and which the alacritty config names as its font family.
 
-The window is the one part no installer can finish. A running alacritty keeps
-the palette it started with until it is reopened or reloaded with Ctrl-Shift-R,
-and any other emulator reads its palette from its own settings. For those there
-is `theme`: it sends the same palette to whatever terminal is drawing the
-window (OSC 4/10/11, through tmux passthrough), and `theme --reset` hands the
-colours back. Not every emulator honours it -- `zsh/scripts/theme.sh` names the
-ones that do.
+The window is the one part no installer can finish, so the config does not rely
+on it. `window-style` makes tmux paint every cell no program owns, which is
+where the background of a full-screen session actually comes from: the window is
+Catppuccin Mocha even when the emulator around it is not. A running alacritty
+keeps the palette it started with until it is reopened or reloaded with
+Ctrl-Shift-R, and any other emulator reads its palette from its own settings.
+For those there is `theme`: it sends the same palette to whatever terminal is
+drawing the window (OSC 4/10/11, through tmux passthrough), and `theme --reset`
+hands the colours back. Not every emulator honours all of it --
+`zsh/scripts/theme.sh` names the ones that do.
 
 ### Prompt cost
 
