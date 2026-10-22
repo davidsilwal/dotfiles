@@ -86,3 +86,7 @@ backups/
 # bat: the Catppuccin theme is downloaded by setup.sh and compiled into the
 # cache; a reinstall should fetch it again rather than restore a stale copy.
 .config/bat/
+
+# superfile writes its ~20 bundled themes here on first run; only the name of
+# the chosen theme belongs in config.toml.
+.config/superfile/theme/

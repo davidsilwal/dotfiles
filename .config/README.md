@@ -120,7 +120,7 @@ Four things sit outside zsh/tmux/nvim and are installed by the same script:
 | `lazygit/config.yml` | `~/.config/lazygit/` | Catppuccin Mocha for the git TUI (`lg`) |
 | Catppuccin bat theme | `~/.config/bat/` | syntax colours in previews; `BAT_THEME` is set in `.zshrc` |
 | `list-oldfiles.sh`, `zoxide-openfiles.sh`, `sessionizer.sh` | `zsh/scripts/` | `nlof`, `nzo`, `tns` / `prefix f` |
-| `television`, `superfile` | `/usr/local/bin/` | `tv` and `spf`; static upstream tarballs, no archive package |
+| `television`, `superfile` | `/usr/local/bin/`, `television/`, `superfile/` | `tv` and `spf`; static upstream tarballs, no archive package. Both point at their built-in Catppuccin theme |
 
 ## Theme
 

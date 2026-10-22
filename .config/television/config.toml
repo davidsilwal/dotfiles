@@ -1,0 +1,13 @@
+# =============================================================================
+#  ~/.config/television/config.toml
+#
+#  television ships a Catppuccin theme (`themes/catppuccin.toml`), so this is a
+#  one-line config rather than a palette copied by hand. Everything else is
+#  left at the built-in default: tv merges this file over its defaults, and the
+#  fewer keys written down here, the less there is to break on an upgrade.
+#
+#  Check the result with `tv list-channels`; open the picker with `tv files`.
+# =============================================================================
+
+theme = "catppuccin"
+default_channel = "files"
