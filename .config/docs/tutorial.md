@@ -235,7 +235,7 @@ never touches the network. The parts worth knowing:
 | Layout adjustments | `prefix + =` evens the panes out, `prefix + z` zooms the active one |
 | Windows | `prefix + c` new (in the current directory), `<` `>` swap, `prefix + r` reloads the config |
 | Copy mode | vi keys; `v` select, `y` yank to the system clipboard (`set-clipboard on`) |
-| Status bar | `status-left` shows the session, the right side shows prefix state, time and date; Catppuccin hexes inline |
+| Status bar | at the top; the left side is empty and the right side carries the Catppuccin application and session pills |
 | Persistence | tmux-resurrect: `prefix + C-s` save, `prefix + C-r` restore, snapshots in `~/.local/state/tmux/resurrect` |
 
 One detail the keys do not make obvious: a resize moves the border the pane

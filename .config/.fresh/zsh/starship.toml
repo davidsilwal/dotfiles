@@ -1,225 +1,51 @@
-"$schema" = 'https://starship.rs/config-schema.json'
+"$schema" = "https://starship.rs/config-schema.json"
 
-# Nothing below may walk the working tree on every prompt. Two costs used to be
-# paid unconditionally: the os module probed the distribution (~50 ms) for one
-# static icon, and each language module scanned the tree for file extensions.
-# The icon is now a literal glyph in the format; the language modules are
-# manifest-driven (see the block above [c]). scan_timeout stays as a backstop
-# in case a module is ever given directory detection again.
+# =============================================================================
+#  ~/.config/zsh/starship.toml - Catppuccin Mocha, the tutorial's two lines
 #
-# The scan itself is only a one-level read_dir of the current directory, which
-# normally costs well under a millisecond, so the timeout is a cap and not a
-# delay: the prompt returns as soon as the listing is done. It used to be 10 ms,
-# which is tighter than a busy filesystem can answer -- a cold cache or a
-# concurrent write (a compiler, a package install) pushed the listing past it
-# and produced a spurious "Scanning current directory timed out" warning for a
-# scan that would have finished a moment later. 100 ms kept the backstop while
-# tolerating a stalled disk, but not a filesystem root: reading / has to cross
-# every mount point there (/proc, /sys, /dev, /run), and the cold-cache listing
-# takes longer than that, so `cd ..` into / still printed the warning. The cap
-# is not a delay -- the prompt returns as soon as the listing is done -- so the
-# only cost of a larger number is how long a genuinely hung scan may take
-# before being abandoned: 500 ms, well under the point where it is noticed.
-scan_timeout = 500
+#  The format is the guide's: the directory on the first line, the prompt
+#  character on the second, and git branch/status/duration on the right. The
+#  previous powerline blocks were drawn with the same palette, which is why the
+#  swap is a layout change rather than a colour change.
+#
+#  Every module below is cheap. Directory truncation is capped, and nothing
+#  scans the tree for language manifests: a prompt that costs more than the
+#  shell's spawn is noticed on every command.
+# =============================================================================
 
-format = """
-[](red)\
-[ ](bg:red fg:crust)\
-$username\
-[](bg:peach fg:red)\
-$directory\
-[](bg:yellow fg:peach)\
-$git_branch\
-$git_status\
-[](fg:yellow bg:green)\
-$c\
-$rust\
-$golang\
-$bun\
-$nodejs\
-$php\
-$java\
-$kotlin\
-$haskell\
-$python\
-[](fg:green bg:lavender)\
-$time\
-[ ](fg:lavender)\
-$cmd_duration\
-$line_break\
-$character"""
+add_newline = true
+palette = "catppuccin_mocha"
 
-palette = 'catppuccin_mocha'
-
-# The os module costs ~50 ms here (it probes the distribution on every
-# prompt) for a single static icon, so the glyph is written into the format
-# instead. U+F17C is the generic Linux mark, correct on both Arch and Ubuntu;
-# swap it for U+F0548 if you would rather see the Ubuntu logo.
-[os]
-disabled = true
-
-[username]
-disabled = true
-style_user = "bg:red fg:crust"
-style_root = "bg:red fg:crust"
-format = '[$user]($style)'
+format = """$directory$line_break$character"""
+right_format = """$git_branch$git_status$cmd_duration"""
 
 [directory]
-style = "bg:peach fg:crust"
-format = "[ $path ]($style)"
+style = "bold teal"
 truncation_length = 3
-truncation_symbol = "…/"
-
-[directory.substitutions]
-"Documents" = "󰈙 "
-"Downloads" = " "
-"Music" = "󰝚 "
-"Pictures" = " "
-"Developer" = "󰲋 "
-
-[git_branch]
-symbol = ""
-style = "bg:yellow"
-format = '[[ $symbol $branch ](fg:crust bg:yellow)]($style)'
-
-[git_status]
-style = "bg:yellow"
-format = '[[($all_status$ahead_behind )](fg:crust bg:yellow)]($style)'
-
-[nodejs]
-detect_files = ["package.json", ".node-version", ".nvmrc"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-# --- Language modules --------------------------------------------------------
-#
-# Every language module is enabled, so a Go, PHP, Java, C, Kotlin, Haskell or
-# Bun project gets its badge. What is switched off is extension scanning:
-# `detect_extensions = []` leaves each module with `detect_files` only, so it
-# stats a handful of well-known manifests in the current directory instead of
-# walking the tree. That walk was the ~50 ms cost, and it also produced false
-# positives: a stray .js file in /tmp made the prompt claim a Node project.
-#
-# A badge used to also print the runtime's version, which costs one spawn of
-# that runtime per prompt: `node --version` is 75 ms here, `rustc --version` 33 ms
-# warm and 600 ms cold — the whole 60 ms prompt budget, and more.
-#
-# Two things had to go, and the second one is the surprise: `$version` in the
-# format, and `$style` as the style of the enclosing group. Using `$style` there
-# makes starship resolve the module's style eagerly, which means it fetches the
-# version after all — a format of '[$symbol]($style)' spawns node even though it
-# never prints a version, while '[$symbol](fg:crust bg:green)' does not. Since
-# every badge here is the same colour, the colour is now written out literally
-# and nothing is fetched. Verified with strace and `starship timings`: every
-# module below is <1 ms in a directory that has all of these manifests.
-#
-# These modules therefore have no `style =` key: only `$style` reads it, and a
-# key no format reads is a trap. To recolour a badge, change the colour in its
-# format (the palette names are at the bottom of this file).
-#
-# Want a version back? Change one format to '[$symbol $version](fg:crust
-# bg:green)' and accept that runtime's spawn on every prompt; `prompt-bench`
-# shows what it costs. Drop a badge entirely with `disabled = true`.
-[bun]
-detect_files = ["bun.lockb", "bun.lock", "bunfig.toml"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-[c]
-detect_files = ["CMakeLists.txt", "meson.build", "configure.ac"]
-detect_extensions = []
-symbol = " "
-format = '[$symbol](fg:crust bg:green)'
-
-[rust]
-detect_files = ["Cargo.toml"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-[golang]
-detect_files = ["go.mod", "go.sum", "go.work"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-[php]
-detect_files = ["composer.json", "composer.lock", ".php-version"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-[java]
-detect_files = ["pom.xml", "build.gradle", "settings.gradle", ".java-version"]
-detect_extensions = []
-symbol = " "
-format = '[$symbol](fg:crust bg:green)'
-
-[jj_bookmark]
-symbol = ""
-style = "bg:yellow"
-format = '[[ $symbol $bookmark(@$remote)$diverged( \\(+$overflow_count others\\)) ](fg:crust bg:yellow)]($style)'
-
-[jj_status]
-style = "bg:yellow"
-format = '[[($all )](fg:crust bg:yellow)]($style)'
-
-[kotlin]
-detect_files = ["build.gradle.kts", "settings.gradle.kts"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-[haskell]
-detect_files = ["stack.yaml", "cabal.project", "package.yaml"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol](fg:crust bg:green)'
-
-[python]
-detect_files = ["pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile", ".python-version", "poetry.lock", "uv.lock", "environment.yml"]
-detect_extensions = []
-symbol = ""
-format = '[$symbol( \($virtualenv\))](fg:crust bg:green)'
-
-[docker_context]
-symbol = ""
-format = '[$symbol( $context)](fg:crust bg:sapphire)'
-
-[conda]
-disabled = true
-symbol = "  "
-style = "fg:crust bg:sapphire"
-format = '[$symbol$environment ]($style)'
-ignore_base = false
-
-[time]
-disabled = false
-time_format = "%R"
-style = "bg:lavender"
-format = '[[  $time ](fg:crust bg:lavender)]($style)'
-
-[line_break]
-disabled = true
+truncate_to_repo = false
+format = "[$path]($style) "
 
 [character]
-disabled = false
-success_symbol = '[❯](bold fg:green)'
-error_symbol = '[❯](bold fg:red)'
-vimcmd_symbol = '[❮](bold fg:green)'
-vimcmd_replace_one_symbol = '[❮](bold fg:lavender)'
-vimcmd_replace_symbol = '[❮](bold fg:lavender)'
-vimcmd_visual_symbol = '[❮](bold fg:yellow)'
+success_symbol = "[❯](bold mauve)"
+error_symbol = "[❯](bold red)"
+
+[git_branch]
+style = "bold lavender"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "bold peach"
+format = "([\\[$all_status$ahead_behind\\]]($style) )"
 
 [cmd_duration]
-show_milliseconds = true
-format = " in $duration "
-style = "bg:lavender"
-disabled = false
-show_notifications = true
-min_time_to_notify = 45000
+min_time = 2_000
+style = "bold yellow"
+format = "took [$duration]($style) "
+
+# The os module probes the distribution on every prompt for one static icon;
+# this prompt does not draw one.
+[os]
+disabled = true
 
 [palettes.catppuccin_mocha]
 rosewater = "#f5e0dc"
@@ -248,4 +74,3 @@ surface0 = "#313244"
 base = "#1e1e2e"
 mantle = "#181825"
 crust = "#11111b"
-

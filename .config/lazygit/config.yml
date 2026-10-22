@@ -34,10 +34,8 @@ gui:
       - '#cdd6f4'
     searchingActiveBorderColor:
       - '#f9e2af'
-
-  authorColors:
-    '*': '#b4befe'
-
+    authorColors:
+      '*': '#b4befe'
   # Catppuccin Mocha reads better with the Nerd Font glyphs this host already
   # has; the border style matches the rounded popups LazyVim draws.
   border: rounded
