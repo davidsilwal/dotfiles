@@ -404,9 +404,9 @@ just a fallback that forwards to `~/.config/zsh/.zshenv`.
 - **No `chsh`.** Your login shell is your account setting; step 3 is manual.
 - **No terminal colour scheme beyond alacritty's.** `alacritty/alacritty.toml`
   sets the window palette and font, and alacritty reads it at start-up --
-  reopen the window after installing. Every other terminal keeps its own
-  colours: `starship.toml` carries the palette the prompt and tmux draw with,
-  but nothing outside alacritty reads a file to recolour a window.
+  reopen the window after installing. For anything else there is the `theme`
+  command, which sends the same palette to the terminal over OSC 4/10/11 and
+  works only where the emulator accepts it.
 - **No plugin manager, no TPM.** Five repositories are cloned shallowly by
   `setup.sh`; updating them is `git -C <dir> pull --ff-only`. Neovim is the one
   exception: it uses lazy.nvim, because a language server stack is not

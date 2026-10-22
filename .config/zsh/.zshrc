@@ -193,6 +193,13 @@ if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/versions.sh ]]; then
   alias versions="${ZDOTDIR:-$HOME/.config/zsh}/scripts/versions.sh"
 fi
 
+# The window's own colours, for an emulator that accepts OSC 4/10/11 from the
+# shell: `theme` sends the Catppuccin palette, `theme --reset` takes it back.
+# See zsh/scripts/theme.sh for which terminals honour it.
+if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/theme.sh ]]; then
+  alias theme="${ZDOTDIR:-$HOME/.config/zsh}/scripts/theme.sh"
+fi
+
 # Keep the terminal title on the current directory.
 _zs_title() { print -Pn '\e]0;%~\a' }
 precmd_functions+=(_zs_title)

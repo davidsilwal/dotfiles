@@ -19,6 +19,7 @@ and verifies. Nothing here is read at runtime; the live files are:
 | `zsh/starship.toml` | prompt: `catppuccin-powerline` preset (Catppuccin Mocha) |
 | `zsh/scripts/prompt-bench.sh` | prompt latency measurement, installed as `prompt-bench` |
 | `zsh/scripts/versions.sh` | toolchain versions for the current directory, as `versions` |
+| `zsh/scripts/theme.sh` | sends the palette to the terminal emulator, as `theme` |
 | `tmux/tmux.conf` | native tmux 3.2+ configuration, no plugin manager |
 | `home/.tmux.conf` | loader for tmux builds older than 3.2 |
 | `home/.zshenv` | fallback when zsh starts without `ZDOTDIR` |

@@ -87,6 +87,7 @@ defined above it.
 | `zsh/starship.toml` | prompt layout, modules, Catppuccin Mocha palette |
 | `zsh/scripts/prompt-bench.sh` | median/p90 prompt latency vs. the spawn floor (`prompt-bench`) |
 | `zsh/scripts/versions.sh` | toolchain versions for the current directory, on demand (`versions`) |
+| `zsh/scripts/theme.sh` | pushes the palette into the terminal itself, on demand (`theme`) |
 | `zsh/plugins/` | four shallow clones, created by `setup.sh`, ignored by git |
 | `alacritty/alacritty.toml` | the window: Catppuccin Mocha palette and the Nerd Font family |
 | `tmux/tmux.conf` | one file: prefix, panes, status bar, keys, resurrect hook |
