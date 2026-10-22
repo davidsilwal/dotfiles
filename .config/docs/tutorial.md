@@ -93,7 +93,7 @@ defined above it.
 | `nvim/` | LazyVim configuration, a submodule: extras, options, keymaps, lockfile |
 | `.fresh/` | pristine baseline used by `setup.sh --fresh` |
 | `setup.sh` | installer and verifier |
-| `~/.zshenv`, `~/.tmux.conf` | compatibility shims for old zsh/tmux |
+| `~/.zshenv`, `~/.tmux.conf`, `~/.bashrc` | shims: old zsh and tmux, and interactive bash handing over to zsh |
 | `docs/` | these documents |
 
 State lives outside the config on purpose: history in
@@ -196,9 +196,10 @@ $ versions
 ```
 
 `versions` reads the same manifests the badges match on, so it answers what the
-prompt used to say, for the price of one command: `versions <dir>` for elsewhere,
-`versions --all` for everything installed. A missing toolchain prints
-`(not installed)` and the exit status stays 0 -- it is a report, not a check.
+prompt used to say, for the price of one command: `versions <dir>` for
+elsewhere, `versions --all` for everything installed. A missing toolchain
+prints `(not installed)` and the exit status stays 0 -- it is a report, not a
+check.
 
 Adding `$version` back to one module is the other option: the badge that
 matters to you, paid for on purpose. `prompt-bench --fixture` then shows the
@@ -222,11 +223,22 @@ One file, no TPM. The parts worth knowing:
 | Area | Behaviour |
 |---|---|
 | Prefix | `Ctrl-a` primary, `Ctrl-b` still works (`prefix2`) |
-| Panes | `prefix + \|` / `prefix + -` split, `h j k l` to move, `H J K L` to resize, `prefix + =` evens the layout |
+| Splitting panes | `prefix + %` or `prefix + \|` side by side, `prefix + "` or `prefix + -` stacked; both open in the pane's directory |
+| Navigating panes | `prefix + h/j/k/l`, `prefix + o` cycles |
+| Resizing panes | `prefix + H/J/K/L` (5 cells, repeatable), `prefix + Alt + arrows` (5), `prefix + Ctrl + arrows` (1), or drag a border with the mouse |
+| Layout adjustments | `prefix + =` evens the panes out, `prefix + z` zooms the active one |
 | Windows | `prefix + c` new (in the current directory), `<` `>` swap, `prefix + r` reloads the config |
 | Copy mode | vi keys; `v` select, `y` yank to the system clipboard (`set-clipboard on`) |
 | Status bar | `status-left` shows the session, the right side shows prefix state, time and date; Catppuccin hexes inline |
 | Persistence | tmux-resurrect: `prefix + C-s` save, `prefix + C-r` restore, snapshots in `~/.local/state/tmux/resurrect` |
+
+One detail the keys do not make obvious: a resize moves the border the pane
+shares with its neighbour, not an outer edge of the window. `prefix + L`
+pushes that border right, so a pane whose neighbour is on the right grows by
+five cells and the neighbour loses five; pressing the same key in the
+neighbour gives them back. `H` pushes it left, `J` and `K` move it down and
+up, and the built-in `Alt` and `Ctrl` arrow bindings differ only in step size.
+For a one-off amount there is the command line: `tmux resize-pane -R 10`.
 
 Two design decisions:
 

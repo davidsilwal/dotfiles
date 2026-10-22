@@ -69,8 +69,8 @@ build (as `/usr/local/bin/tmux` here) is left alone.
 The archive does not carry everything on every release: Ubuntu before 25.04
 has no `starship` package, 22.04 has no `eza`, and both ship Neovim older than
 LazyVim needs. `setup.sh` installs a failed batch one package at a time so the
-rest still lands, reports what is missing, and [docs/ubuntu.md](./docs/ubuntu.md)
-has the fallbacks.
+rest still lands, reports what is missing, and
+[docs/ubuntu.md](./docs/ubuntu.md) has the fallbacks.
 
 `unzip` is not decoration: mason unpacks the language servers it downloads
 with it, and without it no server can be installed.

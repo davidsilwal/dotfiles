@@ -12,6 +12,13 @@
 # that `bash -c '...'`, `bash script.sh` and #!/bin/bash scripts behave
 # exactly as before.
 if [[ $- == *i* ]] && [[ $- != *c* ]]; then
+    # Tools installed outside the package manager put their binaries here.
+    # zsh/.zshenv adds the same directory for zsh; doing it again is harmless,
+    # so the hand-off below does not depend on that file having been read.
+    case ":$PATH:" in
+        *":$HOME/.local/bin:"*) ;;
+        *) export PATH="$HOME/.local/bin:$PATH" ;;
+    esac
     export SHELL=/usr/bin/zsh
     exec /usr/bin/zsh
 fi

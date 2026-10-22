@@ -8,6 +8,7 @@ and verifies. Nothing here is read at runtime; the live files are:
     ~/.config/tmux/       <- .fresh/tmux/
     ~/.tmux.conf          <- .fresh/home/.tmux.conf
     ~/.zshenv             <- .fresh/home/.zshenv
+    ~/.bashrc             <- .fresh/home/.bashrc
 
 ## Contents
 
@@ -19,6 +20,7 @@ and verifies. Nothing here is read at runtime; the live files are:
 | `tmux/tmux.conf` | native tmux 3.2+ configuration, no plugin manager |
 | `home/.tmux.conf` | loader for tmux builds older than 3.2 |
 | `home/.zshenv` | fallback when zsh starts without `ZDOTDIR` |
+| `home/.bashrc` | interactive bash hands over to zsh instead of configuring itself |
 
 ## Editing
 

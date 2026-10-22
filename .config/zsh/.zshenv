@@ -69,3 +69,18 @@ skip_global_compinit=1
 # Falls back gracefully on hosts with no locale generated.
 : "${LANG:=C.UTF-8}"
 export LANG
+
+# --- TencentDB Agent Memory (Pi client) --------------------------------------
+# The upstream pi-plugin reads these at load; without them Pi starts without
+# the TDAI provider (and says so). The key is read from the file rather than
+# stored here.
+export TDAI_PROXY_URL="http://127.0.0.1:8096"
+export TDAI_SPACE_ID="default"
+export TDAI_AGENT_SOURCE="pi"
+export TDAI_TEAM_ID="team-h945wrrrqm"
+export TDAI_AGENT_ID="agt-i49uhriqge"
+export TDAI_TASK_ID="task-h945j4f979"
+export TDAI_MODEL="nvidia"
+if [[ -r "$HOME/.config/opencode/tdai-user-key" ]]; then
+  export TDAI_USER_KEY="$(<"$HOME/.config/opencode/tdai-user-key")"
+fi

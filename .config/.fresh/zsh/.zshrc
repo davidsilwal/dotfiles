@@ -264,7 +264,13 @@ mkcd() { mkdir -p -- "$1" && cd -- "$1" || return 1; }
 # checkout just drops that feature.
 _zs_plugin() {                  # _zs_plugin <dir> <file>
   local f="${ZDOTDIR:-$HOME/.config/zsh}/plugins/$1/$2"
-  [[ -r $f ]] && source "$f"
+  # A missing checkout drops the feature; it is not an error. Without this
+  # `return 0` the test's status becomes the shell's exit status, and since
+  # the highlighter is sourced last, `zsh -ic exit` would report 1 for a
+  # configuration that started perfectly well -- exactly what `setup.sh
+  # --check` measures.
+  [[ -r $f ]] || return 0
+  source "$f"
 }
 
 # Autosuggestions: history first, then completion. Grey, so a suggestion reads
