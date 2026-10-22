@@ -374,6 +374,14 @@ off, and `theme --reset` restores the emulator's own colours. Terminals that
 ignore OSC still get the right text colours from the prompt and tmux; only the
 window background stays theirs.
 
+### Phones and tablets
+
+Termius, Blink and friends are just narrow clients. tmux drops the application
+and session pills below 100 columns and everything but the window list below
+60, so the bar never wraps; `window-size smallest` keeps a shared session
+inside the narrowest attached screen. Detach the phone and the desktop gets
+its width back. Nothing needs a per-device profile.
+
 ### Clipboard over SSH
 
 `tmux.conf` sets `set-clipboard on`; the terminal on the other end has to honour

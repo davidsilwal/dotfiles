@@ -238,6 +238,24 @@ never touches the network. The parts worth knowing:
 | Status bar | at the top; the left side is empty and the right side carries the Catppuccin application and session pills |
 | Persistence | tmux-resurrect: `prefix + C-s` save, `prefix + C-r` restore, snapshots in `~/.local/state/tmux/resurrect` |
 
+### One session, many screens
+
+The status bar is a client format, so it is re-evaluated for every attached
+device instead of once for the server:
+
+| Client width | Right side |
+|---|---|
+| 100+ columns | application pill + session pill |
+| 60-99 | session pill only |
+| under 60 (phone in Termius) | nothing; the window list gets the whole row |
+
+`window-size smallest` keeps a shared session inside the narrowest attached
+client, so a 40-column phone never receives a 186-column canvas it cannot
+draw. The desktop simply has empty space on the right until the phone
+detaches; `aggressive-resize on` applies the same rule to windows that are not
+currently visible. `set -g mouse on` is what makes touch scrolling and pane
+selection work in Termius.
+
 One detail the keys do not make obvious: a resize moves the border the pane
 shares with its neighbour, not an outer edge of the window. `prefix + L`
 pushes that border right, so a pane whose neighbour is on the right grows by
