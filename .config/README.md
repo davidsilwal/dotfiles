@@ -27,6 +27,7 @@ and mason, and its plugins are pinned in `lazy-lock.json`.
 | Document | Read it when |
 |---|---|
 | [docs/install.md](./docs/install.md) | setting up a new machine, updating, resetting, or fixing a broken prompt |
+| [docs/ubuntu.md](./docs/ubuntu.md) | the same install on Ubuntu: `apt` package names, `fd`/`bat`, `/etc/zsh/zshenv`, starship |
 | [docs/tutorial.md](./docs/tutorial.md) | learning how the boot chain, `.zshrc`, prompt, tmux and Neovim fit together |
 
 ## Quick start
@@ -64,6 +65,12 @@ compiled, and nothing runs at start-up to fetch anything.
 
 `tmux` is only requested when the installed one is older than 3.2; a newer
 build (as `/usr/local/bin/tmux` here) is left alone.
+
+The archive does not carry everything on every release: Ubuntu before 25.04
+has no `starship` package, 22.04 has no `eza`, and both ship Neovim older than
+LazyVim needs. `setup.sh` installs a failed batch one package at a time so the
+rest still lands, reports what is missing, and [docs/ubuntu.md](./docs/ubuntu.md)
+has the fallbacks.
 
 `unzip` is not decoration: mason unpacks the language servers it downloads
 with it, and without it no server can be installed.
@@ -262,10 +269,11 @@ readline are not affected by any of this; they honour `~/.inputrc` instead.
 - zsh syntax for `.zshenv` and `.zshrc`
 - a silent interactive startup (`zsh -ic exit`, exit 0, no output)
 - `ZDOTDIR` resolving to `~/.config/zsh`
-- start-up time, best of three, against a 400 ms budget
+- start-up time, best of up to nine runs, against a 400 ms budget
 - the tmux configuration parsing on a throwaway socket
 - the Neovim version against the one LazyVim needs, the configuration files,
   and the number of installed plugins and mason tools
+- the starship version against the 1.27 the prompt's jj blocks need
 - the tools the config uses, and `shellcheck` on `setup.sh`
 
 It exits non-zero when anything fails, so it can run from a script or CI.

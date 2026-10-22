@@ -8,6 +8,10 @@ installed.
 If the config is already installed and you only want to update or reset it, see
 [Updating](#updating) and [Resetting to the baseline](#resetting-to-the-baseline).
 
+On Ubuntu, [ubuntu.md](./ubuntu.md) is the same procedure written out for `apt`:
+package names, the `fd`/`bat` renames, the `/etc/zsh/zshenv` block, and the one
+archive package that is too old for this configuration.
+
 - [Before you start](#before-you-start)
 - [1. Clone the repository](#1-clone-the-repository)
 - [2. Run the installer](#2-run-the-installer)
@@ -35,6 +39,13 @@ zsh, tmux, fzf, fd, bat, eza, ripgrep, zoxide, neovim, unzip and starship are
 installed by the script; you do not need them beforehand. On Debian and
 Ubuntu, `fd` and `bat` are packaged as `fdfind` and `batcat`, so the script
 also creates `~/.local/bin/fd` and `~/.local/bin/bat` pointing at them.
+
+`starship` has to be **1.27 or newer**: the `[jj_bookmark]` and `[jj_status]`
+blocks in `zsh/starship.toml` arrived in that release, and older builds reject
+them with an `Unknown key` warning and render no jj badge. Ubuntu 22.04 and
+24.04 do not package starship at all, and 26.04 ships 1.22.1 --
+[ubuntu.md](./ubuntu.md#4-starship-needs-to-be-installed-by-hand) has the upgrade
+step. `setup.sh --check` fails with the version it found until it is upgraded.
 
 `unzip` is not only for the font: mason uses it to unpack the language servers
 it downloads, so a machine without it cannot install an LSP server.
@@ -192,7 +203,7 @@ that matter:
 ✓ ZDOTDIR -> ~/.config/zsh
 ✓ zsh startup: 2xx ms          (budget 400)
 ✓ tmux config parses (tmux 3.8)
-✓ starship
+✓ starship 1.27.0 (>= 1.27.0)
 ✓ nvim 0.11.6 (LazyVim needs >= 0.11.2)
 ✓ neovim plugins: 96
 ✓ neovim tools: 74 (mason)
