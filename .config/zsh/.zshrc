@@ -198,6 +198,17 @@ fi
 # See zsh/scripts/theme.sh for which terminals honour it.
 if [[ -x ${ZDOTDIR:-$HOME/.config/zsh}/scripts/theme.sh ]]; then
   alias theme="${ZDOTDIR:-$HOME/.config/zsh}/scripts/theme.sh"
+
+  # The prompt and the tmux bar are drawn with Catppuccin hexes, but the
+  # window around them belongs to the terminal emulator -- and over SSH that
+  # emulator is on the other machine. OSC 10/11/4 is the one channel back:
+  # send the palette once per interactive shell, when stdout is a terminal.
+  # CATPPUCCIN_AUTO_THEME=0 turns it off; `theme --reset` restores the
+  # emulator's own colours. `zsh -ic ...` is silent because stdout is not a
+  # tty there.
+  if [[ -o interactive && -t 1 && ${CATPPUCCIN_AUTO_THEME:-1} == 1 ]]; then
+    "${ZDOTDIR:-$HOME/.config/zsh}/scripts/theme.sh" 2>/dev/null || true
+  fi
 fi
 
 # Keep the terminal title on the current directory.

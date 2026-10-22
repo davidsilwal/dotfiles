@@ -352,6 +352,15 @@ does not translate, and what replaces it:
 | **`tns` / `prefix f`** | Same script; the tmux binding opens it in a new window, because fzf needs a tty. |
 | **`nlof`, `nzo`** | Same idea, with `fd` exclusions for `node_modules`, `.venv`, caches and language-server state that a server accumulates. |
 
+### Palette over SSH
+
+The shell cannot change the laptop's `alacritty.toml`, but it can send the same
+palette as OSC 10/11/4. `.zshrc` does that once per interactive shell (guarded by
+`-t 1`, so scripts and `zsh -ic` stay silent); `CATPPUCCIN_AUTO_THEME=0` turns it
+off, and `theme --reset` restores the emulator's own colours. Terminals that
+ignore OSC still get the right text colours from the prompt and tmux; only the
+window background stays theirs.
+
 ### Clipboard over SSH
 
 `tmux.conf` sets `set-clipboard on`; the terminal on the other end has to honour
